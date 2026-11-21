@@ -1,0 +1,288 @@
+import { ObjectId } from "mongodb";
+import uniqBy from 'lodash/uniqBy';
+import { toZonedTime } from "date-fns-tz";
+import { startOfMonth } from "date-fns/startOfMonth";
+import { endOfMonth } from "date-fns/endOfMonth";
+import { format } from "date-fns/format";
+import { isAfter } from "date-fns/isAfter";
+import { isBefore } from "date-fns/isBefore";
+import { subHours } from "date-fns/subHours";
+import { InvocationType, InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
+
+import { EventStatus, ShiftInterestRequestStatus } from "../__generated__/resolvers-types";
+import { EventModel, IEvent } from "../models/event";
+import { ScheduleEvent, SchedulerModel, Timezone } from "../models/scheduler";
+import { IOrganization } from "../models/organizations/organization.entity";
+import { IShift, ShiftModel } from "../models/shift";
+import logger from "../utils/logger";
+import { ShiftInterestRequestModel } from "../models/shiftInterestRequest";
+import { IShiftHoursPerMonthInput } from "../types/common";
+import { addSeconds } from "date-fns/addSeconds";
+
+const lambda = new LambdaClient();
+
+export class InterestListService {
+  constructor(
+    private shifts: ShiftModel,
+    private shiftInterestRequests: ShiftInterestRequestModel,
+    private events: EventModel,
+    private scheduler: SchedulerModel,
+  ) {}
+
+  static shouldTriggerInterestListAssignment(event: IEvent, shift: IShift): boolean {
+    const now = new Date();
+    const interestListClose = new Date(event.scheduledCloseInterestList || 0);
+    const interestListCutoff = new Date(event.interestListAutoAssignCutoff || addSeconds(now, 1));
+
+    return (
+      // Check if the interest list auto assignment has already happened
+      isAfter(now, interestListClose) &&
+      // Check if the shift is locked
+      !shift.locked &&
+      // Check that the interest list cutoff has not passed
+      isBefore(now, interestListCutoff)
+    );
+  }
+
+  async maybeTriggerNextAssignment({
+    shift,
+    organization,
+    relinquishId,
+  }: {
+    shift: IShift;
+    relinquishId?: ObjectId;
+    organization: IOrganization;
+  }) {
+    // Do nothing if this feature is not enabled for the organization
+    if (!organization.features.interestLists) {
+      return;
+    }
+
+    if (relinquishId) {
+      await this.shiftInterestRequests.collection.updateMany({
+        assignedShiftId: shift._id,
+      }, {
+        $set: {
+          assignedShiftId: relinquishId,
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    const event = await this.events.get(shift.eventId);
+    if (!event) {
+      logger.error('Event not found', { shift, organization });
+      return;
+    }
+    if (event.status !== EventStatus.InterestList || !event.scheduledCloseInterestList) {
+      logger.warn('Not triggering interest list assignment - event not interest list', { id: shift._id, shiftId: shift.shiftId, eventStatus: event.status, scheduledCloseInterestList: event.scheduledCloseInterestList });
+      return;
+    }
+
+    if (InterestListService.shouldTriggerInterestListAssignment(event, shift)) {
+      try {
+        await lambda.send(new InvokeCommand({
+          FunctionName: `caleo-core-${process.env.STAGE}-assignShiftGroup`,
+          InvocationType: InvocationType.Event,
+          Payload: JSON.stringify({
+            orgId: organization.id,
+            _id: shift.shiftId,
+          }),
+        }));
+      } catch (error: any) {
+        logger.error('Failed to invoke assignShiftGroup', error);
+      }
+    }
+  }
+
+  removeInterest({
+    userId,
+    shiftGroupId,
+    orgId,
+    modifiedById,
+  } : {
+    modifiedById: ObjectId,
+    userId: ObjectId,
+    shiftGroupId: string,
+    orgId: ObjectId,
+  }) {
+    return this.shiftInterestRequests.collection.updateOne({
+      userId,
+      orgId,
+      shiftGroupId,
+    }, {
+      $set: {
+        status: ShiftInterestRequestStatus.Removed,
+        removedAt: new Date(),
+        modifiedById,
+      }
+    });
+  }
+
+  async registerEventHooks({
+    event,
+    organization,
+    beforeEvent,
+  } : {
+    beforeEvent?: IEvent,
+    event: IEvent,
+    organization: IOrganization
+  }) {
+    // Do nothing if this feature is not enabled for the organization
+    if (!organization.features.interestLists) {
+      return;
+    }
+    // Do nothing if the event status before was not interest list and the
+    // new event status is also not interest list
+    if (
+      beforeEvent &&
+      beforeEvent.status !== EventStatus.InterestList &&
+      event.status !== EventStatus.InterestList
+    ) {
+      return;
+    }
+
+    const orgId = event.orgId;
+    const now = new Date();
+    const closingEvents = event.scheduledCloseInterestList ? subHours(
+      event.scheduledCloseInterestList,
+      organization.settings?.interestList?.defaultNotificationTime || 24
+    ) : undefined;
+    const events = [
+      {
+        date: event.scheduledInterestList,
+        event: ScheduleEvent.EVENT_INTEREST_GO_LIVE,
+        orgId,
+        customEventName: `${ScheduleEvent.EVENT_INTEREST_GO_LIVE}-${event?.id}`,
+        eventTimeZone: Timezone.UTC,
+        input: {
+          orgId: orgId.toString(),
+          eventId: event.id,
+        },
+      },
+      // The step function will take care of scheduled events if auto assign is false
+      {
+        date: event.scheduledCloseInterestList,
+        event: ScheduleEvent.EVENT_INTEREST_CLOSE,
+        orgId,
+        customEventName: `${ScheduleEvent.EVENT_INTEREST_CLOSE}-${event?.id}`,
+        eventTimeZone: Timezone.UTC,
+        input: {
+          orgId: orgId.toString(),
+          eventId: event.id,
+          transition: event.interestListTransition,
+        },
+      },
+      {
+        date: closingEvents,
+        event: ScheduleEvent.EVENT_INTEREST_CLOSING,
+        orgId,
+        customEventName: `${ScheduleEvent.EVENT_INTEREST_CLOSING}-${event?.id}`,
+        eventTimeZone: Timezone.UTC,
+        input: {
+          orgId: orgId.toString(),
+          eventId: event.id,
+          transition: event.interestListTransition,
+        },
+      },
+      {
+        date: event.interestListAutoAssignCutoff,
+        event: ScheduleEvent.EVENT_INTEREST_AUTO_ASSIGN_END,
+        orgId,
+        customEventName: `${ScheduleEvent.EVENT_INTEREST_AUTO_ASSIGN_END}-${event?.id}`,
+        eventTimeZone: Timezone.UTC,
+        input: {
+          orgId: orgId.toString(),
+          eventId: event.id,
+          transition: event.interestListTransition,
+        },
+      },
+    ];
+
+    if (event.status !== EventStatus.InterestList) {
+      return Promise.allSettled(
+        events.map((e) => this.scheduler.removeSchedule({
+          event: e.event,
+          orgId,
+          customEventName: e.customEventName,
+          ignoreError: true,
+        }))
+      );
+    }
+
+    // Schedule events or don't depending if we have
+    // already scheduled them or not
+    return Promise.allSettled(
+      events
+        .filter((e) => !!e.date && !isBefore(e.date, now))
+        .map((e) => this.scheduler.updateScheduledEvent({
+          event: e.event,
+          orgId,
+          eventTime: `at(${format(e.date!, 'yyyy-MM-dd&&HH:mm:ss').replace('&&','T')})`,
+          eventTimeZone: e.eventTimeZone,
+          customEventName: e.customEventName,
+          eventInput: {
+            action: e.event,
+            ...e.input
+          },
+        }))
+    );
+  }
+
+  async sortedInterestRequests({
+    org,
+    sampleShift,
+  }: {
+    org: IOrganization;
+    sampleShift: IShift;
+  }) {
+    // Get all interest requests for the shift group
+    // sorted by tier
+    const allRequests = await this.shiftInterestRequests.requestsStagedForAssignment(sampleShift.shiftId);
+    // Filter out duplicate requests by userId
+    const requests = uniqBy(allRequests, (request) => request.userId.toString());
+
+    // Get total hours for each user in the month of the shift
+    const userIds = requests.map((request) => request.userId);
+    const zonedStart = toZonedTime(sampleShift.startTime, org.timezone);
+    const shiftMonthStart = startOfMonth(zonedStart);
+    const shiftMonthEnd = endOfMonth(zonedStart);
+    const totalHoursInput: IShiftHoursPerMonthInput[] = userIds.map((userId) => ({
+      id: userId.toString(),
+      orgId: org._id!.toString(),
+      beginningOfMonth: shiftMonthStart,
+      endOfMonth: shiftMonthEnd,
+    }));
+    const totalHoursPerUser = await this.shifts
+      .shiftHoursLoader
+      .loadMany(totalHoursInput);
+
+    // Sort the requests by total hours then by tenor
+    const sortedRequests = requests
+      .map((request, index) => {
+        let totalHours = totalHoursPerUser[index];
+        if (totalHours instanceof Error) {
+          totalHours = 0;
+        }
+        return {
+          ...request,
+          totalHours,
+        };
+      })
+      .sort((a, b) => {
+        const aTotalHours = a.totalHours;
+        const bTotalHours = b.totalHours;
+        if (aTotalHours !== bTotalHours) {
+          return aTotalHours - bTotalHours;
+        }
+
+        if (a.user.member.tenor && b.user.member.tenor) {
+          return new Date(a.user.member.tenor).getTime() - new Date(b.user.member.tenor).getTime();
+        }
+
+        return 0;
+      });
+
+    return sortedRequests;
+  }
+}

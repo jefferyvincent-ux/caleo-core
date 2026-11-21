@@ -1,0 +1,505 @@
+service: caleo-core
+frameworkVersion: '3'
+
+params:
+  default:
+    mongoURI: ${ssm:/caleo/mongoURI}
+    dbName: caleo-dev
+    poolName: caleo-${sls:stage}
+    legacyPoolName: lvmpd-oms-uat
+    legacyPoolId: us-west-2_DEVLEGACY
+    legacyClientId: devlegacyclientid0000000000
+    poolId: us-west-2_DEVPOOL00
+    uiClientId: devuiclientid00000000000000
+    cognitoURL: https://caleo-pro-${sls:stage}.auth.us-west-2.amazoncognito.com
+    serviceId: fa563217-bf80-4c84-a658-2aff5d870d4f
+    bucketName: caleo-docs-${sls:stage}
+    domainName: dev-api.caleopro.com
+    pinpointId: d169e35fcb7d4f06b26da89e5650905a
+    fromEmail: support@dev.caleopro.com
+    LOG_LEVEL: info
+    LOG_SAMPLE_RATE: 1
+    ENABLED_ALERTS: 'false'
+    appUrl: https://dev.caleopro.com
+    loginUrl: https://dev.caleopro.com/auth/login
+    registerUrl: https://dev.caleopro.com/auth/register
+    docusignBase: https://account-d.docusign.com
+    eventsChangeStreamId: 68239689ef62a3d84d50d85e
+    assignmentsChangeStreamId: 68240731e108a8235a5da7f3
+    shiftsChangeStreamId: 689d5730ce8933a3acc79465
+    shiftsInterestChangeStreamId: 689d57cace8933a3acc8d970
+    incidentSubmissionChangeStreamId: 689d5842689eb9090abbddb9
+  local:
+    mongoURI: mongodb://localhost:27017
+    dbName: caleo-prod
+    LOG_LEVEL: errors
+    LOG_SAMPLE_RATE: 0
+    ## Set to your impersonation user
+    serviceId: fa563217-bf80-4c84-a658-2aff5d870d4f
+  prod:
+    dbName: caleo-prod
+    legacyPoolName: lvmpd-oms-prod
+    legacyPoolId: us-west-2_PRDLEGACY
+    legacyClientId: prdlegacyclientid0000000000
+    poolId: us-west-2_PRDPOOL00
+    uiClientId: prduiclientid00000000000000
+    domainName: api.caleopro.com
+    pinpointId: ff5f1d58543f4fd78ee3c3c1b6588921
+    fromEmail: app@caleopro.com
+    LOG_LEVEL: warn
+    LOG_SAMPLE_RATE: 0
+    ENABLED_ALERTS: 'true'
+    appUrl: https://app.caleopro.com
+    loginUrl: https://app.caleopro.com/auth/login
+    registerUrl: https://app.caleopro.com/auth/register
+    docusignBase: https://account.docusign.com
+    eventsChangeStreamId: 6824d2ee5ee2e85fd3942eb0
+    assignmentsChangeStreamId: 6824d3860030512c8df3fe66
+    shiftsChangeStreamId: 689d66cf9cc89b4819491b8a
+    shiftsInterestChangeStreamId: 689d670fce8933a3ace88c53
+    incidentSubmissionChangeStreamId: 689d6760ce8933a3ace924aa
+provider:
+  name: aws
+  architecture: arm64
+  runtime: nodejs24.x
+  region: us-west-2
+  versionFunctions: false
+  logRetentionInDays: 3
+  httpApi:
+    cors: true
+    authorizers:
+      cognitoAuthorizer:
+        type: jwt
+        identitySource: $request.header.Authorization
+        issuerUrl: https://cognito-idp.${aws:region}.amazonaws.com/${param:poolId}
+        audience:
+          - ${param:uiClientId}
+  environment:
+    STAGE: ${sls:stage}
+    REGION: ${aws:region}
+    COGNITO_POOL_ID: ${param:poolId}
+    MONGODB_URI: ${param:mongoURI}
+    BROWSER_PUBLIC_KEY: ${ssm:/caleo/browserPublicKey}
+    BROWSER_PRIVATE_KEY: ${ssm:/caleo/browserPrivateKey}
+    MONGODB_NAME: ${param:dbName}
+    MONGODB_COLLECTION: core
+    SERVICE_ID: ${param:serviceId}
+    BUCKET_NAME: ${param:bucketName}
+    SCHEDULED_LAMBDA_ARN: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-scheduledEvents
+    LOTTO_STEP_FUNCTION_ARN: arn:aws:states:${aws:region}:${aws:accountId}:stateMachine:lotto-steps-${sls:stage}
+    INTEREST_STEP_FUNCTION_ARN: arn:aws:states:${aws:region}:${aws:accountId}:stateMachine:auto-interest-list-${sls:stage}
+    SHIFT_NOTIFICATION_SCHEDULER: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-shiftNotificationScheduler
+    MAILER_LAMBDA: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-mailer
+    SCHEDULED_ROLE_ARN: !GetAtt SchedulerRole.Arn
+    PINPOINT_ID: ${param:pinpointId}
+    FROM_EMAIL: ${param:fromEmail}
+    LOGIN_URL: ${param:loginUrl}
+    REGISTER_URL: ${param:registerUrl}
+    APP_URL: ${param:appUrl}
+    LOG_LEVEL: ${param:LOG_LEVEL}
+    LOG_SAMPLE_RATE: ${param:LOG_SAMPLE_RATE}
+    SLACK_TOKEN: ${ssm:/caleo/slackToken}
+    ENABLED_ALERTS: ${param:ENABLED_ALERTS}
+    COGNITO_URL: ${param:cognitoURL}
+    LEGACY_CLIENT_ID: ${param:legacyClientId}
+    LEGACY_POOL_ID: ${param:legacyPoolId}
+    COGNITO_CLIENT_ID: ${param:uiClientId}
+    NODE_OPTIONS: --enable-source-maps
+    DOCUSIGN_BASE: ${param:docusignBase}
+    GENERATE_INCIDENT_FORM_LAMBDA: ${self:service}-${sls:stage}-generateIncidentForm
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - 's3:*'
+            - 'lambda:*'
+            - 'iam:PassRole'
+            - 'scheduler:*'
+            - 'states:*'
+            - 'mobiletargeting:*'
+            - 'secretsmanager:GetSecretValue'
+            - cognito-idp:AdminSetUserPassword
+            - cognito-idp:AdminUpdateUserAttributes
+            - cognito-idp:Admin*
+            - cognito-idp:ListUsers
+          Resource: '*'
+
+plugins:
+  - serverless-esbuild
+  - serverless-domain-manager
+  - serverless-step-functions
+  # - serverless-offline
+
+package:
+  individually: true
+  patterns:
+    - schema.graphql
+
+custom:
+  customDomain:
+    domainName: ${param:domainName}
+    basePath: ${sls:stage}/graphql
+    certificateName: ${param:domainName}
+    createRoute53Record: true
+    autoDomain: true
+    endpointType: regional
+    apiType: http
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: true
+    concurrency: 5
+    packager: yarn
+    external:
+      - 'saslprep'
+  serverless-offline:
+    noPrependStageInUrl: true
+    noAuth: true
+
+functions:
+  # GQL API
+  graphql:
+    handler: src/handlers/api/graphql.handler
+    memorySize: 2048
+    timeout: 15
+    events:
+      - httpApi:
+          path: /
+          method: POST
+          authorizer:
+            name: cognitoAuthorizer
+      - httpApi:
+          path: /
+          method: GET
+  docusign:
+    handler: src/handlers/api/public/docusign.handler
+    timeout: 15
+    events:
+      - httpApi:
+          path: /docusign
+          method: POST
+  docusignInvoice:
+    handler: src/handlers/api/public/docusignInvoice.handler
+    timeout: 15
+    events:
+      - httpApi:
+          path: /docusign/invoice
+          method: POST
+  getVenues:
+    handler: src/handlers/api/public/getVenues.handler
+    timeout: 15
+    events:
+      - httpApi:
+          path: /public/venues
+          method: GET
+  getSSOConfig:
+    handler: src/handlers/api/public/getSSOConfig.handler
+    timeout: 15
+    events:
+      - httpApi:
+          path: /public/sso
+          method: GET
+  eventRequest:
+    handler: src/handlers/api/public/eventRequest.handler
+    timeout: 15
+    events:
+      - httpApi:
+          path: /public/event
+          method: POST
+  orgFeatures:
+    handler: src/handlers/api/public/orgFeatures.handler
+    timeout: 15
+    events:
+      - httpApi:
+          path: /public/organizations/{orgId}/features
+          method: GET
+
+  uiErrors:
+    handler: src/handlers/api/uiErrors.handler
+    events:
+      - httpApi:
+          path: /errors
+          method: POST
+          authorizer:
+            name: cognitoAuthorizer
+
+  # Cognito Triggers Added via Terraform
+  postConfirmation:
+    handler: src/handlers/cognito/registerUser.handler
+    timeout: 30
+
+  postAuthentication:
+    handler: src/handlers/cognito/updateSSOUser.handler
+    timeout: 30
+
+  userMigration:
+    handler: src/handlers/cognito/userMigration.handler
+    timeout: 30
+
+  # PDF Utils
+  generateIncidentForm:
+    handler: src/handlers/invoke/generateIncidentForm.handler
+    memorySize: 4096
+    timeout: 120
+    package:
+      patterns:
+        - assets/*.pdf
+
+  # Scheduled Tasks
+  scheduledEvents:  
+    handler: src/handlers/eventBridge/scheduledEvents.handler
+  refreshDSTokens:
+    handler: src/handlers/eventBridge/refreshDSToken.handler
+    timeout: 120
+    events:
+      - schedule: rate(30 minutes)
+  changeNotifications:
+    handler: src/handlers/eventBridge/changeNotifications.handler
+    timeout: 120
+    events:
+      # 1 hour past midnight UTC
+      - schedule: cron(0 1 * * ? *)
+
+  # EventBridge
+  mongodbChangeStream:
+    handler: src/handlers/eventBridge/mongodbChangeStream.handler
+    events:
+      - eventBridge:
+          eventBus: arn:aws:events:${aws:region}::event-source/aws.partner/mongodb.com/stitch.trigger/${param:eventsChangeStreamId}
+          pattern:
+            source:
+              - aws.partner/mongodb.com/stitch.trigger/${param:eventsChangeStreamId}
+      - eventBridge:
+          eventBus: arn:aws:events:${aws:region}::event-source/aws.partner/mongodb.com/stitch.trigger/${param:assignmentsChangeStreamId}
+          pattern:
+            source:
+              - aws.partner/mongodb.com/stitch.trigger/${param:assignmentsChangeStreamId}
+      - eventBridge:
+          eventBus: arn:aws:events:${aws:region}::event-source/aws.partner/mongodb.com/stitch.trigger/${param:shiftsChangeStreamId}
+          pattern:
+            source:
+              - aws.partner/mongodb.com/stitch.trigger/${param:shiftsChangeStreamId}
+      - eventBridge:
+          eventBus: arn:aws:events:${aws:region}::event-source/aws.partner/mongodb.com/stitch.trigger/${param:shiftsInterestChangeStreamId}
+          pattern:
+            source:
+              - aws.partner/mongodb.com/stitch.trigger/${param:shiftsInterestChangeStreamId}
+      - eventBridge:
+          eventBus: arn:aws:events:${aws:region}::event-source/aws.partner/mongodb.com/stitch.trigger/${param:incidentSubmissionChangeStreamId}
+          pattern:
+            source:
+              - aws.partner/mongodb.com/stitch.trigger/${param:incidentSubmissionChangeStreamId}
+
+  # Lotto Step Function
+  fetchShifts:
+    handler: src/handlers/steps/lottery/fetchShifts.handler
+    memorySize: 2048
+    timeout: 300
+  assignShift:
+    handler: src/handlers/steps/lottery/assignShift.handler
+    memorySize: 2048
+    timeout: 300
+  finalizeLottery:
+    handler: src/handlers/steps/lottery/finalizeLottery.handler
+    timeout: 300
+  postFCFSShifts:
+    handler: src/handlers/steps/lottery/postFCFSShifts.handler
+    timeout: 300
+  lotteryAnalytics:
+    handler: src/handlers/steps/lottery/lotteryAnalytics.handler
+    timeout: 300
+
+  # Interest List SFN
+  fetchInterestShifts:
+    handler: src/handlers/steps/interestList/fetchShifts.handler
+    timeout: 300
+  assignShiftGroup:
+    handler: src/handlers/steps/interestList/assignShiftGroup.handler
+    memorySize: 2048
+    timeout: 900
+
+  shiftNotificationScheduler:
+    handler: src/handlers/invoke/shiftNotificationScheduler.handler
+    timeout: 300
+  mailer:
+    handler: src/handlers/invoke/mailer.handler
+    memorySize: 2048
+    timeout: 300
+
+  # Data sync functions
+  memberStatusSync:
+    handler: src/handlers/steps/sync/memberStatusSync.handler
+    timeout: 300
+  tierResetSync:
+    handler: src/handlers/steps/sync/tierResetSync.handler
+    timeout: 300
+  markEventAsComplete:
+    handler: src/handlers/steps/sync/markEventAsComplete.handler
+    timeout: 300
+  checkoutNotifications:
+    handler: src/handlers/steps/sync/checkoutNotifications.handler
+    timeout: 300
+  ocnReminders:
+    handler: src/handlers/steps/sync/ocnReminders.handler
+    timeout: 300
+
+resources:
+  Resources:
+    SchedulerRole:
+      Type: 'AWS::IAM::Role'
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - scheduler.amazonaws.com
+              Action:
+                - 'sts:AssumeRole'
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
+    DocumentBucket:
+      Type: 'AWS::S3::Bucket'
+      Properties:
+        BucketName: ${param:bucketName}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - PUT
+              AllowedOrigins:
+                - '*'
+
+stepFunctions:
+  stateMachines:
+    lottoSteps:
+      name: lotto-steps-${sls:stage}
+      definition:
+        StartAt: FetchShifts
+        States:
+          FetchShifts:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [fetchShifts, Arn]
+            Next: AssignShifts
+          AssignShifts:
+            Type: Map
+            MaxConcurrency: 1
+            ResultPath: $.entries
+            InputPath: $.entries
+            ItemProcessor:
+              ProcessorConfig:
+                Mode: INLINE
+              StartAt: AssignShift
+              States:
+                AssignShift:
+                  Type: Task
+                  Resource:
+                    Fn::GetAtt: [assignShift, Arn]
+                  End: true
+            Next: FinalizeLottery
+          FinalizeLottery:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [finalizeLottery, Arn]
+            Next: FCFSDelay
+          FCFSDelay:
+            Type: Wait
+            TimestampPath: $.fcfsDelay
+            Next: ParallelFCFSDelay
+          ParallelFCFSDelay:
+            Type: Parallel
+            End: true
+            Branches:
+              - StartAt: PostFCFSShifts
+                States:
+                  PostFCFSShifts:
+                    Type: Task
+                    Resource:
+                      Fn::GetAtt: [postFCFSShifts, Arn]
+                    End: true
+              - StartAt: LotteryAnalytics
+                States:
+                  LotteryAnalytics:
+                    Type: Task
+                    Resource:
+                      Fn::GetAtt: [lotteryAnalytics, Arn]
+                    End: true
+    timeSync:
+      name: time-sync-${sls:stage}
+      events:
+        - schedule: rate(1 hour)
+      definition:
+        StartAt: Parallel
+        States:
+          Parallel:
+            Type: Parallel
+            End: true
+            Branches:
+              - StartAt: MemberStatusSync
+                States:
+                  MemberStatusSync:
+                    Type: Task
+                    Resource:
+                      Fn::GetAtt: [memberStatusSync, Arn]
+                    End: true
+              - StartAt: TierResetSync
+                States:
+                  TierResetSync:
+                    Type: Task
+                    Resource:
+                      Fn::GetAtt: [tierResetSync, Arn]
+                    End: true
+              # - StartAt: CheckoutNotifications
+              #   States:
+              #     CheckoutNotifications:
+              #       Type: Task
+              #       Resource:
+              #         Fn::GetAtt: [checkoutNotifications, Arn]
+              #       End: true
+              - StartAt: MarkAsComplete
+                States:
+                  MarkAsComplete:
+                    Type: Task
+                    Resource:
+                      Fn::GetAtt: [markEventAsComplete, Arn]
+                    End: true
+              - StartAt: OCNReminders
+                States:
+                  OCNReminders:
+                    Type: Task
+                    Resource:
+                      Fn::GetAtt: [ocnReminders, Arn]
+                    End: true
+    interestListSteps:
+      name: auto-interest-list-${sls:stage}
+      definition:
+        StartAt: FetchShifts
+        States:
+          FetchShifts:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [fetchInterestShifts, Arn]
+            Next: AssignShifts
+          AssignShifts:
+            Type: Map
+            MaxConcurrency: 1
+            ResultPath: $.entries
+            InputPath: $.entries
+            ItemProcessor:
+              ProcessorConfig:
+                Mode: INLINE
+              StartAt: AssignShift
+              States:
+                AssignShift:
+                  Type: Task
+                  Resource:
+                    Fn::GetAtt: [assignShiftGroup, Arn]
+                  End: true
+            End: true
+    
+  validate: true

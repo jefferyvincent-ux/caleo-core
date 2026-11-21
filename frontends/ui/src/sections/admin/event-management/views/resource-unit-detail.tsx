@@ -1,0 +1,134 @@
+import { useMemo, useState } from 'react';
+// @mui
+import Container from '@mui/material/Container';
+import Grid from '@mui/material/Grid';
+import Typography from '@mui/material/Typography';
+// hooks
+import { useQuery } from '@apollo/client';
+import { useParams } from 'src/routes/hooks';
+import * as shiftUtils from 'src/utils/shifts';
+// components
+import QueryView from 'src/components/query-view';
+// types
+import { ShiftData, SHIFTS_FOR_EVENT_DASHBOARD } from 'src/api/shifts';
+import { IShiftData } from 'src/types/event-dashboard';
+import Analytics from '../resource-unit/analytics';
+import ShiftTable from '../resource-unit/shift-table/table';
+import Actions, { IActions } from '../resource-unit/header/actions';
+
+export default function ResourceUnitDetailView() {
+  const params = useParams();
+  const [filters, setFilters] = useState<IActions>({
+    divisionIds: [],
+  });
+
+  const {
+    data,
+    refetch,
+    loading,
+    error,
+  } = useQuery<ShiftData>(SHIFTS_FOR_EVENT_DASHBOARD, {
+    fetchPolicy: 'network-only', // Used for first execution
+    nextFetchPolicy: 'cache-first', // Used for subsequent executions
+    variables: {
+      input: {
+        limit: 100000,
+        skip: 0,
+        orderBy: 'startTime',
+        order: 'asc',
+        eventIds: [params.eventId],
+      }
+    },
+    pollInterval: 1 * 60 * 1000 * 2,
+  });
+
+  const shiftData: IShiftData = useMemo(() => {
+    let items = data?.shifts?.items;
+    if (filters.divisionIds.length > 0) {
+      items = data?.shifts?.items?.filter((shift) => 
+        filters.divisionIds.includes(shift.user?.member?.divisionId || '')
+      );
+    }
+
+    const assignedShifts = items?.filter((shift) => !!shift.userId);
+    const unassignedShifts = items?.filter((shift) => !shift.userId);
+
+    const awaitingArrival = assignedShifts?.filter(shiftUtils.awaitingArrival);
+    const late = assignedShifts?.filter(shiftUtils.late);
+    const checkedIn = assignedShifts?.filter(shiftUtils.checkedIn);
+    const checkedOut = assignedShifts?.filter(shiftUtils.checkedOut);
+    const nowShow = assignedShifts?.filter(shiftUtils.noShow);
+    const demobilized = assignedShifts?.filter(shiftUtils.demobilized);
+
+    return {
+      shifts: {
+        items: items || [],
+        total: items?.length || 0,
+      },
+      demobilized: {
+        items: demobilized || [],
+        total: demobilized?.length || 0,
+      },
+      assignedShifts: {
+        items: assignedShifts || [],
+        total: assignedShifts?.length || 0,
+      },
+      unassignedShifts: {
+        items: unassignedShifts || [],
+        total: unassignedShifts?.length || 0,
+      },
+      awaitingArrival: {
+        items: awaitingArrival || [],
+        total: awaitingArrival?.length || 0,
+      },
+      checkedIn: {
+        items: checkedIn || [],
+        total: checkedIn?.length || 0,
+      },
+      checkedOut: {
+        items: checkedOut || [],
+        total: checkedOut?.length || 0,
+      },
+      noShow: {
+        items: nowShow || [],
+        total: nowShow?.length || 0,
+      },
+      late: {
+        items: late || [],
+        total: late?.length || 0,
+      },
+    };
+  }, [filters, data]);
+
+  return (
+    <Container
+      component="main"
+      sx={{
+        height: 'calc(100vh - 80px)',
+      }}
+      maxWidth='xl'
+    >
+      <QueryView
+        loading={loading}
+        error={!!error}
+        errorTitle='Failed to Load Event Dashboard'
+        errorDescription='There was an error loading Event dashboard. Please try again.'
+        refetch={refetch}
+      >
+        <Grid container spacing={3} mb={2}>
+          <Grid item xs={12} md={6}>
+            <Typography variant='h3' component='h1' gutterBottom>{shiftData?.shifts?.items?.[0]?.event?.name}</Typography>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Actions eventId={params.eventId!} refetch={refetch} setFilters={setFilters} />
+          </Grid>
+        </Grid>
+        <Grid container spacing={3}>
+          <Analytics data={shiftData} />
+
+          <ShiftTable data={shiftData} loading={loading} refetch={refetch} />
+        </Grid>
+      </QueryView>
+    </Container>
+  )
+}

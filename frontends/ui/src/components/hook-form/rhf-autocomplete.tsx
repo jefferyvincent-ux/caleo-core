@@ -1,0 +1,78 @@
+import { useFormContext, Controller } from 'react-hook-form';
+// @mui
+import TextField from '@mui/material/TextField';
+import { InputLabelProps } from '@mui/material/InputLabel';
+import Autocomplete, { AutocompleteProps } from '@mui/material/Autocomplete';
+
+// ----------------------------------------------------------------------
+
+interface Props<
+  T,
+  Multiple extends boolean | undefined,
+  DisableClearable extends boolean | undefined,
+  FreeSolo extends boolean | undefined,
+> extends AutocompleteProps<T, Multiple, DisableClearable, FreeSolo> {
+  name: string;
+  label?: string;
+  valueKey?: string;
+  placeholder?: string;
+  helperText?: React.ReactNode;
+  inputLabelProps?: Partial<InputLabelProps> | undefined;
+  textFieldChange?: React.ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement>;
+}
+
+export default function RHFAutocomplete<
+  T,
+  Multiple extends boolean | undefined,
+  DisableClearable extends boolean | undefined,
+  FreeSolo extends boolean | undefined,
+>({
+  name,
+  label,
+  placeholder,
+  helperText,
+  valueKey,
+  inputLabelProps = {},
+  textFieldChange,
+  ...other
+}: Omit<Props<T, Multiple, DisableClearable, FreeSolo>, 'renderInput'>) {
+  const { control } = useFormContext();
+  return (
+    <Controller
+      name={name}
+      control={control}
+      render={({ field, fieldState: { error } }) => (
+        <Autocomplete
+          {...field}
+          value={field.value || null}
+          onChange={(event, newValue: any) => {
+            if (valueKey && !other.multiple) {
+              field.onChange(newValue[valueKey]) // Currently breaks with Multiple selection
+            } else {
+              field.onChange(newValue);
+            }
+          }}
+          renderInput={(params: any) => (
+            <TextField
+              label={label}
+              placeholder={placeholder}
+              error={!!error}
+              onChange={(...args) => {
+                if (textFieldChange) {
+                  textFieldChange(...args);
+                }
+                if (params.onChange) {
+                  params.onChange(...args);
+                }
+              }}
+              helperText={error ? error?.message : helperText}
+              {...params}
+              InputLabelProps={{ ...(params?.InputLabelProps || {}), ...inputLabelProps }}
+            />
+          )}
+          {...other}
+        />
+      )}
+    />
+  );
+}

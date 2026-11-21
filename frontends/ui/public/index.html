@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate" />
+  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+  <!-- Favicon -->
+  <link rel="icon" href="%PUBLIC_URL%/favicon/favicon.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="%PUBLIC_URL%/favicon/favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="%PUBLIC_URL%/favicon/favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/favicon/apple-touch-icon.png">
+
+  <!-- Using Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@900&display=swap" rel="stylesheet" />
+
+  <title>CaleoPro</title>
+
+  <meta name="description"
+    content="CaleoPro is the best overtime shift management platform on the planet." />
+  <meta name="keywords" content="react,material,kit,application,dashboard,admin,template" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/philfung/add-to-homescreen@3.5/dist/add-to-homescreen.min.css">
+  <script src="https://cdn.jsdelivr.net/gh/philfung/add-to-homescreen@3.5/dist/add-to-homescreen.min.js"></script>
+</body>
+</head>
+
+<body>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <div id="root"></div>
+  <script type="text/javascript">!function(e,t,n){function a(){var e=t.getElementsByTagName("script")[0],n=t.createElement("script");n.type="text/javascript",n.async=!0,n.src="https://beacon-v2.helpscout.net",e.parentNode.insertBefore(n,e)}if(e.Beacon=n=function(t,n,a){e.Beacon.readyQueue.push({method:t,options:n,data:a})},n.readyQueue=[],"complete"===t.readyState)return a();e.attachEvent?e.attachEvent("onload",a):e.addEventListener("load",a,!1)}(window,document,window.Beacon||function(){});</script>
+  <script type="text/javascript">
+    const [subdomain] = window.location.host.split('.');
+    // Default ID
+    let id = 'fe3d0204-1953-406d-8449-e3e0fe10a3ec';
+    if (/lasd/i.test(subdomain)) {
+      // LASD subdomain
+      id = '4a814f56-a0b3-4e61-a066-ad8a2493170f';
+    }
+    window.Beacon('init', id);
+    window.Beacon('config', {display: { position: 'left', horizontalOffset: 65, zIndex: 1102 } })
+  </script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      window.AddToHomeScreenInstance = new window.AddToHomeScreen({
+        appName: 'CaleoPro',
+        appNameDisplay: 'standalone',
+        displayOptions:{ showMobile: true, showDesktop: false },
+        appIconUrl: '/favicon/apple-touch-icon.png',
+        assetUrl: 'https://cdn.jsdelivr.net/gh/philfung/add-to-homescreen@3.5/dist/assets/img/',
+        allowClose: true,
+        maxModalDisplayCount: -1,
+        showArrow: true,
+      });
+      ret = window.AddToHomeScreenInstance.show('en');
+    });
+  </script>
+</body>
+
+</html>

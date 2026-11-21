@@ -1,0 +1,3084 @@
+###### START Common ######
+  enum DocType {
+    USER
+    ORGANIZATION
+    RANK
+    SKILL
+    EQUIPMENT
+    MEMBER_SKILL
+    VENUE
+    NOTIFICATION
+    MEMBER_NOTIFICATION
+    IN_APP_NOTIFICATION
+    EVENT
+    ASSIGNMENT
+    SHIFT
+    LOTTERY_COUNTER
+    SITE_LOCK
+    SHIFT_BUFFER_REQUEST
+    SHIFT_LOTTERY_REQUEST
+    SHIFT_INTEREST_REQUEST
+    LOTTERY_STATE
+    BROWSER_NOTIFICATION_SETTING
+    USER_ANALYTICS
+    UNIT
+    DIVISION
+    VEHICLE_CATEGORIES
+    DS_TOKEN
+    DS_EVENTS
+    RANK_GROUP
+    OUTSIDE_USER
+    INCIDENT_FORM
+    EVENT_USER_ACTION
+    ASSIGNMENT_GROUP
+    ASSIGNMENT_DIVISION
+    BRANCH
+  }
+  enum DayOfWeek {
+    SUNDAY
+    MONDAY
+    TUESDAY
+    WEDNESDAY
+    THURSDAY
+    FRIDAY
+    SATURDAY
+  }
+  enum DocusignEventUserRole {
+    SUPERVISOR
+    LIEUTENANT
+    OFFICER
+  }
+
+  scalar Date
+  scalar DateTime
+  scalar ObjectId
+###### END Common ######
+
+###### START Site Lock ######
+  type SiteLock {
+    id: ID!
+    locked: Boolean!
+    message: String
+    docType: DocType!
+    orgId: String!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    org: Organization
+    modifiedBy: User
+  }
+
+  input UpsertSiteLock {
+    locked: Boolean
+    message: String
+  }
+###### END Site Lock ######
+
+###### START Lotto Analytics ######
+  type LottoAnalytics {
+    id: ID!
+    userId: String!
+    lotteryCounter: Int!
+    createdAt: String!
+    total: Int!
+    totalUnassignedShifts: Int
+    totalShifts: Int!
+    approved: Int!
+    rejected: Int!
+    requests: [LottoRequests]
+
+    org: Organization
+    user: User
+  }
+
+  type LottoRequests {
+    id: ID!
+    eventId: String!
+    assignmentId: String!
+    shiftGroupId: String!
+    status: ShiftLotteryRequestStatus!
+    order: Int!
+    totalRequests: Int!
+
+    event: Event
+    assignment: Assignment
+  }
+###### END Lotto Analytics ######
+
+###### START User ######
+  enum MemberTier {
+    TIER_1
+    TIER_2
+    TIER_3
+    TIER_4
+  }
+
+  enum MemberStatus {
+    ACTIVE
+    INACTIVE
+    PENDING
+    INVITED
+    REMOVED
+  }
+
+  enum MemberRole {
+    ADMIN
+    MEMBER
+  }
+
+  type AvailabilityTime {
+    startTime: String!
+    endTime: String!
+  }
+
+  type DayAvailability {
+    available: Boolean!
+    times: [AvailabilityTime!]
+  }
+
+  type UserAvailability {
+    monday: DayAvailability!
+    tuesday: DayAvailability!
+    wednesday: DayAvailability!
+    thursday: DayAvailability!
+    friday: DayAvailability!
+    saturday: DayAvailability!
+    sunday: DayAvailability!
+  }
+
+  type Phone {
+    number: String
+    receiveTexts: Boolean
+  }
+
+  type Email {
+    address: String!
+    receiveEmails: Boolean!
+  }
+
+  type ContactInfo {
+    primaryPhone: Phone
+    primaryEmail: Email!
+    secondaryPhone: Phone
+    secondaryEmail: Email
+  }
+
+  type Member {
+    orgId: String!
+    pNumber: String!
+    role: MemberRole
+    status: MemberStatus
+    contactInfo: ContactInfo
+    tenor: String
+    tier: MemberTier
+    tierUntil: String
+    tierResetOnNextLottery: Boolean
+    startDate: String
+    inactivateUntil: String
+    inactivationNote: String
+    rankId: String
+    unitId: String
+    divisionId: String
+    memberSkillIds: [String]
+    memberEquipmentIds: [String]
+    adminNote: String
+    deactivationNote: String
+    maxShifts: Int
+    hourlyRate: Float
+    incidentHourlyRate: Float
+    allowSelfCheckIn: Boolean
+
+    availability: UserAvailability!
+    rank: Rank
+    unit: Unit
+    division: Division
+    memberSkills: [MemberSkill]
+    memberEquipments: [MemberEquipment]
+    org: Organization
+  }
+
+  type ProfilePhotoAttachmentUpload {
+    imagePath: String!
+    uploadUrl: String!
+  }
+
+  type User {
+    id: ID!
+    cognitoId: String
+    firstName: String!
+    lastName: String!
+    name: String!
+    imagePath: String
+    superAdmin: Boolean!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+    docType: DocType!
+    member: Member!
+
+    image: String
+    modifiedBy: User
+    # Only used when getting interest list requests
+    numberOfHoursThisMonth: Float
+    # Only used when getting lotto requests
+    # for the admin site. We could expand this later
+    # but for now 🤷‍♂️
+    numberOfShiftsThisWeek: Int
+    shiftsThisWeek: [Shift]
+    browserNotificationSettings: [BrowserNotificationSetting]
+  }
+
+  input InputAdminResetPassword {
+    userId: String!
+    password: String!
+  }
+
+  input InputAvailabilityTime {
+    startTime: String!
+    endTime: String!
+  }
+
+  input InputDayAvailability {
+    available: Boolean!
+    times: [InputAvailabilityTime!]
+  }
+
+  input InputUserAvailability {
+    monday: InputDayAvailability!
+    tuesday: InputDayAvailability!
+    wednesday: InputDayAvailability!
+    thursday: InputDayAvailability!
+    friday: InputDayAvailability!
+    saturday: InputDayAvailability!
+    sunday: InputDayAvailability!
+  }
+
+  input UpdateUser {
+    id: ID!
+    cognitoId: String!
+    firstName: String!
+    lastName: String!
+    imagePath: String
+    member: NewMember
+  }
+
+  input InviteUser {
+    email: String!
+    member: InviteMember!
+    orgId: String!
+  }
+
+  input NewUser {
+    cognitoId: String!
+    firstName: String!
+    lastName: String!
+    member: NewMember!
+  }
+
+  input NewPhone {
+    number: String
+    receiveTexts: Boolean
+  }
+
+  input NewEmail {
+    address: String!
+    receiveEmails: Boolean!
+  }
+
+  input NewContactInfo {
+    primaryPhone: NewPhone
+    primaryEmail: NewEmail!
+    secondaryPhone: NewPhone
+    secondaryEmail: NewEmail
+  }
+
+  input InviteMember {
+    tier: MemberTier
+    pNumber: String
+    role: MemberRole
+    rankId: String
+    unitId: String
+    divisionId: String
+    tenor: String
+  }
+
+  input NewMember {
+    orgId: String!
+    pNumber: String!
+    role: MemberRole
+    startDate: String
+    tier: MemberTier
+    tierUntil: String
+    tenor: String
+    inactivateUntil: String
+    inactivationNote: String
+    rankId: String
+    unitId: String
+    divisionId: String
+    memberSkillIds: [String]
+    memberEquipmentIds: [String]
+    adminNote: String
+    status: MemberStatus
+    maxShifts: Int
+    deactivationNote: String
+    contactInfo: NewContactInfo
+    availability: InputUserAvailability
+    hourlyRate: Float
+    incidentHourlyRate: Float
+    allowSelfCheckIn: Boolean
+  }
+###### END User ######
+
+###### START Browser Notification Setting ######
+  type BrowserNotificationSetting {
+    id: ID!
+    userId: String!
+    orgId: String!
+    subscription: BrowserNotificationSubscription!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    org: Organization
+    modifiedBy: User
+  }
+
+  type BrowserNotificationSubscription {
+    endpoint: String!
+    expirationTime: String
+    keys: BrowserNotificationKeys!
+  }
+
+  type BrowserNotificationKeys {
+    p256dh: String!
+    auth: String!
+  }
+
+  input InputBrowserNotificationSubscription {
+    endpoint: String!
+    expirationTime: String
+    keys: InputBrowserNotificationKeys!
+  }
+
+  input InputBrowserNotificationKeys {
+    p256dh: String!
+    auth: String!
+  }
+###### End Browser Notification Setting ######
+
+###### START Events ######
+  enum EventStatus {
+    # Event that has been requested via form or otherwise
+    REQUESTED
+    # Event that is being built and not ready for assignments
+    DRAFT
+    # Event that assigned to a lottery run
+    READY_FOR_LOTTERY
+    # Event is going to allow users to express interest for the event shifts
+    # and will be assigned manually by the admin
+    INTEREST_LIST
+    # Event where shifts are available to sign up for whenever
+    FIRST_COME_FIRST_SERVE
+    # Event has removedAt set
+    REMOVED
+    # Event is past the end date
+    COMPLETE
+    # Event is a template that can be used to scaffold a new event
+    TEMPLATE
+    # If incidents are enabled on the org then this event type will be available
+    # an incident event will never have assignments and shifts assigned to it
+    INCIDENT
+
+    # Computed statuses
+    # Event that will appear in the next lottery run
+    PRE_LOTTERY
+    # Event that is staged for first come first serve but not yet available
+    PRE_FIRST_COME_FIRST_SERVE
+  }
+
+  type EventAttachmentUpload {
+    attachmentPath: String!
+    uploadUrl: String!
+  }
+
+  type Event {
+    id: ID!
+    referenceId: String!
+    name: String!
+    searchAttribute: String!
+    attachmentPaths: [String]
+    startTime: String
+    endTime: String
+    notes: String
+    orgId: String!
+    status: EventStatus!
+    lotteryNumber: Int
+    docusignEnvelopeId: String
+    docusignEnvelopeStatus: String
+
+    allowOfficerCheckIn: Boolean
+    geoFence: [[Float]]
+    reportingLocation: ReportingLocation
+
+    # For the St Pete Demo. This might move to a different place once we get feedback
+    callSign: String @deprecated(reason: "Use the assignments callSign instead!")
+
+    # When interest list will be available for officers
+    scheduledInterestList: String
+    # When the interest list will start automatically assigning officers
+    scheduledCloseInterestList: String
+    # When the interest list will stop automatically assigning officers
+    interestListAutoAssignCutoff: String
+    # What we should transition to after the auto assign cut off passes
+    interestListTransition: EventStatus
+    # Boolean stating if we want the interest list to auto assign when it closes
+    autoAssignInterestList: Boolean
+
+    bodyWarnTag: String
+    radioFrequency: String
+    uniform: String
+    briefingTime: DateTime
+    briefingLocation: String
+    reportingTime: DateTime
+    commandPostContactNumber: String
+
+    scheduledFirstComeFirstServe: String
+    notifyOnFirstComeFirstServe: Boolean
+    notifyWhenFullyStaffed: Boolean
+    requestDetails: EventRequestDetails
+    docType: DocType!
+    venueId: String
+    assignmentIds: [String]
+    createdById: String
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    # LASD specific fields
+    bypassDemobilization: Boolean
+    ocn: String
+    outsideOrgCode: String
+    overtimeReasonCode: String
+    budgetActivityCode: String
+    supervisorId: String @deprecated(reason: "Use supervisorAssignmentId instead!")
+    lieutenantId: String @deprecated(reason: "Use lieutenantAssignmentId instead!")
+    supervisorAssignmentId: ObjectId
+    lieutenantAssignmentId: ObjectId
+    fieldSupervisorAssignmentId: ObjectId
+    overrideSupervisorId: ObjectId
+    overtimeNarrative: String
+
+    # Incident only fields
+    requiredSkillIds: [String]
+    incidentSubmissionCuttoff: DateTime
+
+    venue: Venue
+    org: Organization!
+    assignments: [Assignment!]
+    attachments: [String!]
+    requiredSkills: [Skill]
+    createdBy: User
+    availableShifts: Int
+    totalShifts: Int
+    modifiedBy: User
+    lotteryCounter: LotteryCounter
+    supervisor: User
+    lieutenant: User
+    overrideSupervisor: User
+    supervisorAssignment: Assignment
+    lieutenantAssignment: Assignment
+    fieldSupervisorAssignment: Assignment
+    docusignEvent: DocusignEvent
+    thumbnailUrl: String
+  }
+
+  type ReportingLocation {
+    fullAddress: String
+    # The name of the type here is a bit misleading.
+    # The type just defines a location with lat/lng coords
+    location: ShiftCheckInOutCoordinates
+  }
+
+  type EventInvoiceResponse {
+    signingUrl: String!
+  }
+
+  type EventRequestDetails {
+    startTime: String
+    endTime: String
+    newVenue: Boolean
+    numberOfOfficers: Int
+    estimatedAttendees: Int
+    requestorEmail: String
+    adminNote: String
+  }
+
+  type AssignmentAttachmentUpload {
+    attachmentPath: String!
+    uploadUrl: String!
+  }
+
+  type Assignment {
+    id: ID!
+    name: String!
+    description: String
+    eventId: String!
+    orgId: String!
+    callSign: String
+    notifyWhenFullyStaffed: Boolean
+    reportingLocation: String @deprecated(reason: "Use reportingLocationDetails instead!")
+    docType: DocType!
+    requiredSkillIds: [String]
+    requiredEquipmentIds: [String]
+    rankIds: [String]
+    bwNeeded: Boolean!
+    shiftIds: [String]
+    shiftSlots: [AssignmentShiftSlot]
+    attachmentPaths: [String]
+    # Overrides for event
+    supervisorId: String @deprecated(reason: "Use supervisorAssignmentId instead!")
+    lieutenantId: String @deprecated(reason: "Use lieutenantAssignmentId instead!")
+    # Overrides for event supervisor and lieutenant
+    supervisorAssignmentId: ObjectId
+    useSupervisorAssignmentOverride: Boolean
+    lieutenantAssignmentId: ObjectId
+    useLieutenantAssignmentOverride: Boolean
+    fieldSupervisorAssignmentId: ObjectId
+    useFieldSupervisorAssignmentOverride: Boolean
+    # This one is used for smaller events with only one supervisor
+    overrideSignerId: ObjectId
+    # If the assignment is a signing authority assignment
+    # we will only allow a single locked shift to be assigned to it
+    isSigningAuthority: Boolean
+
+    bypassDemobilization: Boolean
+    includeDriveTime: Boolean
+    allowOfficerCheckIn: Boolean
+    geoFence: [[Float]]
+    reportingLocationDetails: ReportingLocation
+
+    assignmentArea: [[Float]]
+    assignmentLocation: ReportingLocation
+
+    assignmentDivisionId: ObjectId
+    branchId: ObjectId
+    assignmentGroupId: ObjectId
+    reportingTime: DateTime
+    radioFrequency: String
+    uniform: String
+    briefingTime: DateTime
+    briefingLocation: String
+    
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    event: Event!
+    requiredSkills: [Skill]
+    requiredEquipment: [Equipment]
+    ranks: [Rank]
+    shifts: [Shift]
+    attachments: [String!]
+    availableShifts: Int
+    totalShifts: Int
+    supervisor: User
+    lieutenant: User
+    assignmentDivision: AssignmentDivision
+    assignmentGroup: AssignmentGroup
+    branch: Branch
+    supervisorAssignment: Assignment
+    lieutenantAssignment: Assignment
+    fieldSupervisorAssignment: Assignment
+    overrideSigner: User
+    org: Organization!
+    modifiedBy: User
+  }
+
+  type AssignmentShiftSlot {
+    id: String
+    slotCount: Int
+    slotDetails: [AssignmentSlotDetails]
+  }
+
+  type AssignmentSlotDetails {
+    index: Int!
+    callSign: String
+    customId: String
+    locked: Boolean
+  }
+
+  enum ShiftStatus {
+    # Not removed, not assigned to a user, and not started
+    AVAILABLE
+    # Assigned shifts that are not started
+    ASSIGNED
+    # Shifts that were unassigned via assigned user
+    RELINQUISHED
+    # Shifts that were unassigned via admin
+    UNASSIGNED
+    # Shifts that were removed from an assignment
+    REMOVED
+    # Shifts that are marked as locked
+    LOCKED
+  }
+
+  enum ShiftBufferRequestStatus {
+    APPROVED
+    REJECTED
+    PENDING
+  }
+
+  type ShiftDayTime {
+    startTime: String!
+    endTime: String!
+  }
+
+  type ShiftAvailabilityTime {
+    monday: ShiftDayTime
+    tuesday: ShiftDayTime
+    wednesday: ShiftDayTime
+    thursday: ShiftDayTime
+    friday: ShiftDayTime
+    saturday: ShiftDayTime
+    sunday: ShiftDayTime
+  }
+
+  type ShiftBufferRequest {
+    id: ID!
+    shiftId: String!
+    shiftGroupId: String!
+    shiftBufferShiftId: String!
+    eventId: String!
+    assignmentId: String!
+    startTime: String!
+    endTime: String!
+    status: ShiftBufferRequestStatus!
+    orgId: String!
+    userId: String!
+    note: String
+    reason: String
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    user: User
+    shift: Shift!
+    shiftBufferShift: Shift!
+    event: Event!
+    assignment: Assignment!
+    org: Organization!
+    modifiedBy: User
+  }
+
+  enum ShiftInterestRequestStatus {
+    APPROVED
+    REJECTED
+    PENDING
+    REMOVED
+  }
+
+  type ShiftInterestRequest {
+    id: ID!
+    shiftGroupId: String!
+    eventId: String!
+    assignmentId: String!
+    orgId: String!
+    userId: String!
+    status: ShiftInterestRequestStatus
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    user(shiftStart: String, timezoneOffset: Int, ignoreShiftId: String): User
+    event: Event!
+    assignment: Assignment!
+    org: Organization!
+    shift: Shift
+    assignedShift: Shift
+    modifiedBy: User
+  }
+
+  enum ShiftLotteryRequestStatus {
+    APPROVED
+    REJECTED
+    PENDING
+    REMOVED
+  }
+
+  type ShiftLotteryRequest {
+    id: ID!
+    shiftGroupId: String!
+    eventId: String!
+    assignmentId: String!
+    orgId: String!
+    order: Int
+    userId: String!
+    status: ShiftLotteryRequestStatus
+    lotteryCounter: Int!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    user(shiftStart: String, timezoneOffset: Int): User
+    event: Event!
+    assignment: Assignment!
+    org: Organization!
+    shift: Shift
+    modifiedBy: User
+  }
+
+  type ShiftCheckInOutCoordinates {
+    accuracy: Float
+    altitude: Float
+    altitudeAccuracy: Float
+    heading: Float
+    latitude: Float
+    longitude: Float
+    speed: Float
+  }
+
+  type ShiftCheckInOut {
+    checkInTime: String
+    checkInNote: String
+    checkInCoords: ShiftCheckInOutCoordinates
+    checkOutTime: String
+    checkOutNote: String
+    checkOutCoords: ShiftCheckInOutCoordinates
+    adminNotes: String
+    equipmentDetails: ShiftCheckInOutEquipment
+    checkInEquipmentTime: Float @deprecated(reason: "Use equipmentDetails instead!")
+    checkOutEquipmentTime: Float @deprecated(reason: "Use equipmentDetails instead!")
+    noShow: Boolean
+  }
+
+  type ShiftCheckInOutEquipment {
+    checkInTime: String
+    checkOutTime: String
+    vehicleCategoryId: String
+
+    vehicleCategory: VehicleCategories
+  }
+
+  type ShiftTabResponse {
+    orgId: String!
+    templateName: String!
+    data: String!
+  }
+
+  type Shift {
+    id: ID!
+    shiftId: String!
+    refNumber: Int!
+    callSign: String
+    # This field is used for sorting and it set by the admins
+    customId: String!
+    startTime: String!
+    endTime: String!
+    status: ShiftStatus!
+    docType: DocType!
+    orgId: String!
+    locked: Boolean
+    relinquishNote: String
+    eventId: String!
+    assignmentId: String!
+    userId: String
+    createdById: String
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+    availability: ShiftAvailabilityTime
+    notificationId: String
+    shiftCheckInOut: ShiftCheckInOut
+    docusignEnvelopeId: String
+    hasComments: Boolean!
+    demobilizedTime: DateTime
+    bypassDemobilization: Boolean
+
+    calculatedShiftDetails: CalculatedShiftDetails
+    shiftComment: ShiftComment
+    # This will be included when searching for shifts
+    shiftBufferShift: Shift
+    # This will be included with available shifts so that we can show existing requests
+    shiftInterestRequest: ShiftInterestRequest
+    # This field will only be included on otherShiftSlots
+    order: Int
+    lotteryRequest: ShiftLotteryRequest
+    otherShiftSlots: [Shift]
+    user: User
+    event: Event!
+    assignment: Assignment!
+    org: Organization!
+    createdBy: User
+    modifiedBy: User
+    docusignEvent: DocusignEvent
+    docusignEvents: [DocusignEvent!]
+  }
+
+  type CalculatedShiftDetails {
+    startTime: DateTime
+    endTime: DateTime
+    formattedDiff: Float
+    totalEquipmentTime: Float
+  }
+
+  type ShiftComment {
+    id: ID!
+    shiftId: ObjectId!
+    userId: ObjectId!
+    comment: String!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+  }
+
+  input UpsertShiftComment {
+    id: ID!
+    shiftId: ObjectId!
+    userId: ObjectId!
+    comment: String!
+  }
+
+  enum EventUserActionType {
+    SHIFT
+    INCIDENT_SUBMISSION
+  }
+
+  type EventUserAction {
+    id: ObjectId!
+    userId: ObjectId!
+    eventId: ObjectId!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    removedAt: DateTime
+    
+    # If this action is from a shift/interest request this will be populated 
+    shiftGroupId: String
+
+    # If this action is from an incident submission this will be populated
+    incidentFormId: ObjectId
+
+    actionType: EventUserActionType!
+
+    # Details about the action
+    source: EventUserActionLogSource!
+    modifiedById: ObjectId
+    timestamp: DateTime!
+    action: EventUserActionLogAction!
+    notes: String
+    actionId: String
+    eventNotificationId: ObjectId
+
+    user: User!
+    modifiedBy: User
+    event: Event!
+    shifts: [Shift!]
+    shiftInterestRequests: [ShiftInterestRequest!]
+    shiftLotteryRequests: [ShiftLotteryRequest!]
+    incidentForm: IncidentForm
+    eventNotification: EventNotification
+  }
+
+  enum EventUserActionLogSource {
+    INTEREST_REQUEST
+    INCIDENT_SUBMISSION
+    SHIFT
+    DOCUSIGN
+  }
+
+  enum EventUserActionLogAction {
+    # Interest request actions
+    SUBMITTED
+    REMOVED
+    APPROVED
+    REJECTED
+
+    # Shift actions
+    ASSIGNED
+    RELINQUISHED
+    UNASSIGNED
+    # REMOVED COMMENTED OUT BECAUSE WE ALREADY HAVE A REMOVED ACTION
+    CHECK_IN
+    CHECK_OUT
+    OFFICER_COMMENT_ADDED
+    DEMOBILIZED
+    NOTIFICATION_SENT
+
+    # Incident actions
+    DRAFTED
+
+    # Docusign actions
+    # SUBMITTED COMMENTED OUT BECAUSE WE ALREADY HAVE A REMOVED ACTION
+    COMPLETED
+    VOIDED
+    DECLINED
+  }
+
+  # Normalized shift between an incident and a regular shift
+  type FinanceShift {
+    user: User!
+    rank: Rank
+    division: Division
+    unit: Unit
+    startTime: DateTime!
+    endTime: DateTime!
+    totalOvertimeHours: Float!
+    totalStraightHours: Float!
+    totalVehicleMilage: Float!
+    vehicleCategory: VehicleCategories
+    docusignEvent: DocusignEvent
+  }
+
+  type ShiftCheckOutResponse {
+    shift: Shift!
+    signingUrl: String
+  }
+
+  input ShiftCheckInOutEvent {
+    id: String!
+    time: String,
+    coords: CheckInOutCoordinates
+    equipmentTime: Float @deprecated(reason: "Use equipmentDateTime instead!")
+    equipmentDateTime: String
+    vehicleCategoryId: String
+    note: String
+    adminNotes: String
+    signNow: Boolean
+    fromSelfCheckout: Boolean
+  }
+
+  input ShiftCheckInOutEquipmentEvent {
+    checkInTime: String
+    checkOutTime: String
+    vehicleCategoryId: String
+  }
+
+  input ShiftAdminCheckInOutEvent {
+    id: String!
+    callSign: String
+    checkInTime: String
+    checkOutTime: String
+    checkInEquipmentTime: Float @deprecated(reason: "Use equipmentDetails instead!")
+    checkOutEquipmentTime: Float @deprecated(reason: "Use equipmentDetails instead!")
+    equipmentDetails: ShiftCheckInOutEquipmentEvent
+    adminNotes: String
+    noShow: Boolean
+    customShiftId: String
+    regenerateDocusign: Boolean
+  }
+
+  input CheckInOutCoordinates {
+    accuracy: Float
+    altitude: Float
+    altitudeAccuracy: Float
+    heading: Float
+    latitude: Float
+    longitude: Float
+    speed: Float
+  }
+
+  input UpsertEvent {
+    id: String
+    name: String!
+    callSign: String @deprecated(reason: "Use the assignments callSign instead!")
+    attachmentPaths: [String]
+    status: EventStatus
+    lotteryNumber: Int
+    interestListTransition: EventStatus
+    scheduledInterestList: String
+    scheduledCloseInterestList: String
+    interestListAutoAssignCutoff: String
+    scheduledFirstComeFirstServe: String
+    autoAssignInterestList: Boolean
+    notifyOnFirstComeFirstServe: Boolean
+    requestDetails: InputEventRequestDetails
+    notes: String
+    venueId: String
+    thumbnail: String
+    notifyWhenFullyStaffed: Boolean
+    assignmentIds: [String]!
+    createdById: String
+
+    allowOfficerCheckIn: Boolean
+    geoFence: [[Float]]
+    # The name of the type here is a bit misleading.
+    # The type just defines a location with lat/lng coords
+    reportingLocation: UpsertReportingLocation
+
+    # LASD specific fields
+    bypassDemobilization: Boolean
+    ocn: String
+    outsideOrgCode: String
+    overtimeReasonCode: String
+    budgetActivityCode: String
+    supervisorId: String
+    lieutenantId: String
+    supervisorAssignmentId: ObjectId
+    lieutenantAssignmentId: ObjectId
+    fieldSupervisorAssignmentId: ObjectId
+    overrideSupervisorId: ObjectId
+    overtimeNarrative: String
+
+    bodyWarnTag: String
+    radioFrequency: String
+    uniform: String
+    briefingTime: DateTime
+    briefingLocation: String
+    reportingTime: DateTime
+    commandPostContactNumber: String
+
+    # Incident only field! This will only be accepted when the event status is INCIDENT
+    startTime: String
+    # Incident only field! This will only be accepted when the event status is INCIDENT
+    endTime: String
+
+    # Incident only field
+    requiredSkillIds: [String]
+    incidentSubmissionCuttoff: DateTime
+  }
+  
+  input UpsertReportingLocation {
+    fullAddress: String
+    # The name of the type here is a bit misleading.
+    # The type just defines a location with lat/lng coords
+    location: CheckInOutCoordinates
+  }
+
+  input InputEventRequestDetails {
+    startTime: String
+    endTime: String
+    newVenue: Boolean
+    numberOfOfficers: Int
+    estimatedAttendees: Int
+    requestorEmail: String
+    adminNote: String
+  }
+
+  input CreateShiftBufferRequest {
+    shiftId: String!
+    shiftBufferShiftId: String!
+    userId: String!
+    note: String
+  }
+
+  input UpsertShiftLotteryRequest {
+    id: String
+    shiftGroupId: String!
+    userId: String!
+    order: Int
+  }
+
+  input UpsertShiftInterestRequest {
+    id: String
+    shiftGroupId: String!
+    userId: String!
+    status: ShiftInterestRequestStatus
+  }
+
+  input UpsertAssignment {
+    id: String
+    name: String!
+    callSign: String
+    attachmentPaths: [String]
+    description: String
+    eventId: String!
+    notifyWhenFullyStaffed: Boolean
+    reportingLocation: String
+    requiredSkillIds: [String]
+    requiredEquipmentIds: [String]
+    shiftSlots: [UpsertAssignmentShiftSlot]
+    rankIds: [String]
+    bwNeeded: Boolean
+    shiftIds: [String]
+    supervisorId: String @deprecated(reason: "Use supervisorAssignmentId instead!")
+    lieutenantId: String @deprecated(reason: "Use lieutenantAssignmentId instead!")
+    supervisorAssignmentId: ObjectId
+    useSupervisorAssignmentOverride: Boolean
+    lieutenantAssignmentId: ObjectId
+    bypassDemobilization: Boolean
+    useLieutenantAssignmentOverride: Boolean
+    fieldSupervisorAssignmentId: ObjectId
+    useFieldSupervisorAssignmentOverride: Boolean
+    overrideSignerId: ObjectId
+    isSigningAuthority: Boolean
+    allowOfficerCheckIn: Boolean
+    geoFence: [[Float]]
+    reportingLocationDetails: UpsertReportingLocation
+    assignmentArea: [[Float]]
+    assignmentLocation: UpsertReportingLocation
+    uniform: String
+    radioFrequency: String
+    briefingTime: DateTime
+    briefingLocation: String
+    includeDriveTime: Boolean
+    assignmentDivisionId: ObjectId
+    branchId: ObjectId
+    assignmentGroupId: ObjectId
+    reportingTime: DateTime
+  }
+
+  input UpsertAssignmentShiftSlot {
+    id: String
+    slotCount: Int
+    slotDetails: [UpsertAssignmentSlotDetails]
+  }
+
+  input UpsertAssignmentSlotDetails {
+    index: Int!
+    callSign: String
+    customId: String
+    locked: Boolean
+  }
+
+  input UpsertShift {
+    id: String
+    callSign: String
+    shiftId: String!
+    refNumber: Int
+    customId: String
+    startTime: String!
+    endTime: String!
+    status: ShiftStatus
+    bypassDemobilization: Boolean
+    locked: Boolean
+    eventId: String!
+    assignmentId: String!
+    userId: String
+    createdById: String
+  }
+
+  input ShiftUpdates {
+    startTime: String
+    endTime: String
+    bypassDemobilization: Boolean
+  }
+###### END Events ######
+
+###### START Docusign Events ######
+type DocusignEvent {
+  id: ID!
+  envelopeId: String!
+  eventId: String
+  assignmentId: String
+  shiftId: String
+  userId: String!
+  orgId: String!
+  status: String!
+  docType: DocType!
+  signerDetails: [DocusignSignerDetails!]
+
+  supervisorId: String
+  lieutenantId: String
+
+  createdAt: String!
+  updatedAt: DateTime!
+  removedAt: String
+
+  event: Event
+  shift: Shift
+  documentUrl: String
+  documentUrls: [String]
+}
+
+type DocusignSignerDetails {
+  email: String!
+  status: String!
+  roleName: String!
+  routingOrder: String!
+  data: DocusignSignerDetailsData
+}
+
+type DocusignSignerDetailsData {
+  callSign: String
+  vehicleModel: String
+  vehicleNumber: String
+  vehicleMake: String
+  endingMilage: String
+  totalMilage: String
+  startingMilage: String
+  officerShiftTimeIn: String
+  officerShiftTimeOut: String
+}
+###### END Docusign Events ######
+
+###### START LotteryCounter ######
+  type LotteryCounter {
+    id: ID!
+    counter: Int!
+    orgId: String!
+    start: String!
+    end: String!
+    docType: DocType!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    org: Organization!
+    modifiedBy: User
+    
+  }
+###### END LotteryCounter ######
+
+###### START Venues ######
+  type VenueContact {
+    firstName: String
+    lastName: String
+    email: String
+    phone: String
+  }
+
+  enum VenueStatus {
+    ACTIVE
+    REQUESTED
+    INACTIVE
+    REMOVED
+  }
+
+  type Venue {
+    id: ID!
+    name: String!
+    address: String
+    city: String
+    state: String
+    zip: String
+    phone: String
+    contract: VenueContract
+    notes: String
+    contact: VenueContact
+    status: VenueStatus
+    docType: DocType!
+    orgId: String!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    org: Organization!
+    modifiedBy: User
+  }
+
+  type VenueContract {
+    expirationDate: String
+    name: String
+    insuranceName: String
+  }
+
+  input UpsertVenueContact {
+    firstName: String
+    lastName: String
+    email: String
+    phone: String
+  }
+
+  input UpsertVenueContract {
+    expirationDate: String
+    name: String
+    insuranceName: String
+  }
+
+  input UpsertVenue {
+    id: String
+    name: String!
+    address: String
+    city: String
+    state: String
+    zip: String
+    phone: String
+    contract: UpsertVenueContract
+    notes: String
+    contact: UpsertVenueContact
+    status: VenueStatus
+  }
+###### END Venues ######
+
+###### START Skill ######
+  enum SkillStatus {
+    APPROVED
+    DENIED
+    PENDING
+  }
+
+  type Skill {
+    id: ID!
+    name: String!
+    active: Boolean!
+    requiresAdminApproval: Boolean!
+    requiresCert: Boolean!
+    docType: DocType!
+    orgId: String!
+    rankOnlyIds: [String]
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    ranksOnly: [Rank]
+    org: Organization!
+    modifiedBy: User
+  }
+
+  type MemberSkillAttachmentUpload {
+    imagePath: String!
+    uploadUrl: String!
+  }
+
+  type MemberSkill {
+    id: ID!
+    userId: String!
+    imagePath: String!
+    skillId: String!
+    orgId: String!
+    status: SkillStatus!
+    statusReason: String
+    docType: DocType!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    skill: Skill!
+    user: User
+    # Download url for the image
+    image: String
+    modifiedBy: User
+  }
+
+  input UpsertSkill {
+    id: String
+    name: String
+    active: Boolean
+    requiresAdminApproval: Boolean
+    requiresCert: Boolean
+    rankOnlyIds: [String]
+  }
+
+  input UpsertMemberSkill {
+    id: String
+    imagePath: String
+    status: SkillStatus
+    statusReason: String
+    skillId: String!
+    userId: String!
+  }
+###### END Skill ######
+
+###### START Rank ######
+  type Rank {
+    id: ID!
+    name: String!
+    active: Boolean!
+    hourlyRate: Float
+    incidentHourlyRate: Float
+    rankGroupId: String
+    docType: DocType!
+    orgId: String!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    org: Organization
+    rankGroup: RankGroup
+    modifiedBy: User
+  }
+
+  input UpsertRank {
+    id: String
+    name: String
+    rankGroupId: String
+    hourlyRate: Float
+    incidentHourlyRate: Float
+    active: Boolean
+  }
+
+  type RankGroup {
+    id: ID!
+    name: String!
+    rankIds: [String!]
+
+    docType: DocType!
+    orgId: String!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    org: Organization
+    modifiedBy: User
+
+    ranks: [Rank!]
+  }
+
+  input UpsertRankGroup {
+    id: String
+    name: String
+    rankIds: [String!]
+  }
+###### END Rank ######
+
+###### START Unit ######
+  type Unit {
+    id: ID!
+    name: String!
+    active: Boolean!
+    overtimeCode: String
+    divisionIds: [String!]
+    docType: DocType!
+    orgId: String!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    org: Organization
+    divisions: [Division]
+    modifiedBy: User
+  }
+
+  input UpsertUnit {
+    id: String
+    name: String
+    overtimeCode: String
+    divisionIds: [String!]
+    active: Boolean
+  }
+###### END Unit ######
+
+###### START Division ######
+  type Division {
+    id: ID!
+    name: String!
+    active: Boolean!
+    docType: DocType!
+    orgId: String!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    org: Organization
+    modifiedBy: User
+  }
+
+  input UpsertDivision {
+    id: String
+    name: String
+    active: Boolean
+  }
+###### END Division ######
+
+###### START AssignmentDivision ######
+  type AssignmentDivision {
+    id: ID!
+    name: String!
+    active: Boolean!
+    docType: DocType!
+    orgId: String!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    org: Organization
+    modifiedBy: User
+  }
+
+  input UpsertAssignmentDivision {
+    id: String
+    name: String
+    active: Boolean
+  }
+###### END AssignmentDivision ######
+
+###### START Branch ######
+  type Branch {
+    id: ID!
+    name: String!
+    active: Boolean!
+    docType: DocType!
+    orgId: String!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    org: Organization
+    modifiedBy: User
+  }
+
+  input UpsertBranch {
+    id: String
+    name: String
+    active: Boolean
+  }
+###### END Branch ######
+
+###### START AssignmentGroup ######
+  type AssignmentGroup {
+    id: ID!
+    name: String!
+    active: Boolean!
+    docType: DocType!
+    orgId: String!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    org: Organization
+    modifiedBy: User
+  }
+
+  input UpsertAssignmentGroup {
+    id: String
+    name: String
+    active: Boolean
+  }
+###### END AssignmentGroup ######
+
+###### START Vehicle Categories ######
+  type VehicleCategories {
+    id: ID!
+    name: String!
+    active: Boolean!
+    milageRate: Float
+    docType: DocType!
+    orgId: String!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    org: Organization
+    modifiedBy: User
+  }
+
+  input UpsertVehicleCategories {
+    id: String
+    name: String
+    milageRate: Float
+    active: Boolean
+  }
+###### END Vehicle Categories ######
+
+###### START Equipment ######
+  enum EquipmentStatus {
+    APPROVED
+    DENIED
+    PENDING
+  }
+
+  type Equipment {
+    id: ID!
+    name: String!
+    active: Boolean!
+    requiresAdminApproval: Boolean!
+    requiresCert: Boolean!
+    requiresEquipmentTime: Boolean!
+    requiresVehicleInformation: Boolean!
+    docType: DocType!
+    orgId: String!
+    rankOnlyIds: [String]
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    ranksOnly: [Rank]
+    org: Organization!
+    modifiedBy: User
+  }
+
+  type MemberEquipmentAttachmentUpload {
+    imagePath: String!
+    uploadUrl: String!
+  }
+
+  type MemberEquipment {
+    id: ID!
+    userId: String!
+    imagePath: String!
+    equipmentId: String!
+    orgId: String!
+    status: EquipmentStatus!
+    statusReason: String
+    docType: DocType!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    equipment: Equipment!
+    user: User
+    # Download url for the image
+    image: String
+    modifiedBy: User
+  }
+
+  input UpsertEquipment {
+    id: String
+    name: String
+    active: Boolean
+    requiresAdminApproval: Boolean
+    requiresEquipmentTime: Boolean
+    requiresVehicleInformation: Boolean
+    requiresCert: Boolean
+    rankOnlyIds: [String]
+  }
+
+  input UpsertMemberEquipment {
+    id: String
+    imagePath: String
+    status: EquipmentStatus
+    statusReason: String
+    equipmentId: String!
+    userId: String!
+  }
+###### END Equipment ######
+
+###### START Organization ######
+  type OrganizationContact {
+    phone: String
+    email: String
+  }
+
+  enum ShiftReminderUnit {
+    MINUTE
+    HOUR
+    DAY
+  }
+
+  type Organization {
+    id: ID!
+    name: String!
+    address: String
+    state: String
+    city: String
+    zip: String
+    weekBegins: DayOfWeek
+    timezone: String!
+    contact: OrganizationContact
+    docType: DocType!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+    ssoAppName: String
+    fromEmail: String
+    settings: OrganizationOvertimeSettings
+    features: OrganizationFeatures!
+    flatFeatures: String!
+    sso: OrganizationSSOSettings
+    customizations: OrganizationCustomizations
+    modifiedBy: User
+    docusign: DocusignSettings
+  }
+
+  type DocusignSettings {
+    templateId: String
+  }
+
+  type OrganizationCustomizations {
+    # Alias for the name of pNumber
+    pNumber: String!
+    # Alias for tier names
+    tiers: OrganizationCustomizationsTiers!
+    dateFormats: OrganizationDateFormats!
+  }
+
+  type OrganizationDateFormats {
+    dateTime: String!
+    date: String!
+    miniDate: String!
+    time: String!
+  }
+
+  type OrganizationCustomizationsTiers {
+    TIER_1: OrganizationCustomizationsTier!
+    TIER_2: OrganizationCustomizationsTier!
+    TIER_3: OrganizationCustomizationsTier!
+    TIER_4: OrganizationCustomizationsTier!
+  }
+
+  type OrganizationCustomizationsTier {
+    enabled: Boolean!
+    label: String!
+  }
+
+  type OrganizationFeatures {
+    lottery: Boolean!
+    venueContractDates: Boolean!
+    eventCheckIn: Boolean!
+    eventCheckOut: Boolean!
+    officerCheckInOut: Boolean!
+    interestLists: Boolean!
+    monthlyMaxHours: Boolean!
+    weeklyMaxShifts: Boolean!
+    externalEventRequests: Boolean!
+    disabledTiers: Boolean!
+    disabledTierUntil: Boolean!
+    sso: Boolean!
+    equipment: Boolean!
+    lasdEventFields: Boolean!
+    profileTenor: Boolean!
+    lasdUserFields: Boolean!
+    autoEnroll: Boolean!
+    docusign: Boolean!
+    kiosk: Boolean!
+    eventTemplates: Boolean!
+    noShowReport: Boolean!
+    rankHourlyRate: Boolean!
+    callSign: Boolean!
+    eventInvoice: Boolean!
+    vehicleCategories: Boolean!
+    rankGrouping: Boolean!
+    endOfShiftPDF: Boolean!
+    docusignCheckout: Boolean!
+    customizableShiftId: Boolean!
+    incidentEvents: Boolean!
+    outsideUserList: Boolean!
+    signingAuthorityAssignment: Boolean!
+    financeUnit: Boolean!
+    showShiftsByEvent: Boolean!
+    mapboxReportingLocation: Boolean!
+    operationsUnit: Boolean!
+    adminManagedProfilePhotos: Boolean!
+  }
+
+  type OrganizationFeatureOptions {
+    label: String!
+    value: String!
+  }
+
+  type OrganizationSSOSettings {
+    uiSubDomains: [String]
+    enablePasswordLogin: Boolean
+    metadataDocUrl: String
+  }
+
+  type OrganizationOvertimeSettings {
+    eventSettings: OrganizationEventSettings
+    shiftsPerWeek: Int!
+    hoursPerMonth: Int!
+    lottery: LotterySettings!
+    shiftBuffer: ShiftBuffer!
+    userRelinquishShift: UserRelinquishShift!
+    shiftReminder: ShiftReminder!
+    secondaryShiftReminder: ShiftReminder
+    checkInOut: CheckInOutSetting
+    interestList: InterestListSetting
+  }
+
+  type OrganizationEventSettings {
+    allowThumbnail: Boolean!
+    defaultThumbnail: String
+  }
+
+  type OrganizationEventSettingsUpload {
+    imagePath: String!
+    uploadUrl: String!
+  }
+
+  type InterestListSetting {
+    # Number of hours before shift starts to begin assigning interest list
+    defaultHoursBeforeShift: Int
+    defaultAutoHireCutoff: Int
+    defaultNotificationTime: Int
+  }
+
+  type CheckInOutSetting {
+    minutesBeforeShiftStart: Int!
+    minutesAfterShiftEnd: Int!
+  }
+
+  type UserRelinquishShift {
+    enabled: Boolean!
+    # Number of hours to wait before shift starts to allow users to relinquish their shift
+    numberOfHoursBeforeShift: Int!
+    afterShiftRemove: AfterShiftRemove!
+    requireNoteWhenRelinquishing: Boolean!
+  }
+
+  type ShiftBuffer {
+    enabled: Boolean!
+    minuteShiftBuffer: Int!
+    adminOverrideShiftBuffer: Boolean!
+  }
+
+  type ShiftReminder {
+    enabled: Boolean!
+    # Number of hours before shift to send reminder
+    time: Int!
+    unit: ShiftReminderUnit!
+  }
+
+  # What tier should members be moved to if they relinquish their shift
+  # and for how long
+  type AfterShiftRemove {
+    tier: MemberTier!
+    days: Int!
+  }
+
+  type LotterySettings {
+    enabled: Boolean!
+    # The number of hours to notify users before the lottery window closes
+    notifyUsersBeforeClose: Int!
+    # Number of hours to wait before showing FCFS shifts
+    fcfsShiftsDelay: Int!
+    open: LotteryDate!
+    close: LotteryDate!
+  }
+
+  type LotteryDate {
+    dayOfWeek: DayOfWeek!
+    ## This will be a full ISO string but we will only
+    ## use the hour and minute portion of the ISO
+    time: String!
+  }
+
+  type OutsideUser {
+    id: ID!
+    orgId: String!
+    email: String!
+    name: String!
+    pNumber: String!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    org: Organization!
+    modifiedBy: User
+  }
+
+  input CreateOutsideUser {
+    email: String!
+    pNumber: String!
+    name: String!
+  }
+
+  input UpsertOrganizationContact {
+    phone: String!
+    email: String!
+  }
+
+  input CreateOrganization {
+    name: String!
+    address: String
+    state: String
+    city: String
+    zip: String
+    weekBegins: DayOfWeek
+    timezone: String
+    fromEmail: String
+    contact: UpsertOrganizationContact
+    settings: UpsertOrganizationOvertimeSettings
+    customizations: UpsertOrganizationCustomizations
+    features: UpsertOrganizationFeatures
+    sso: UpsertOrganizationSSOSettings
+  }
+
+  input UpsertOrganization {
+    id: String
+    name: String
+    address: String
+    state: String
+    city: String
+    zip: String
+    weekBegins: DayOfWeek
+    timezone: String
+    fromEmail: String
+    contact: UpsertOrganizationContact
+    settings: UpsertOrganizationOvertimeSettings
+    features: UpsertOrganizationFeatures
+    customizations: UpsertOrganizationCustomizations
+    sso: UpsertOrganizationSSOSettings
+  }
+
+  input UpsertOrganizationCustomizations {
+    pNumber: String!
+    tiers: UpsertOrganizationCustomizationsTiers!
+  }
+
+  input UpsertOrganizationCustomizationsTiers {
+    TIER_1: UpsertOrganizationCustomizationsTier!
+    TIER_2: UpsertOrganizationCustomizationsTier!
+    TIER_3: UpsertOrganizationCustomizationsTier!
+    TIER_4: UpsertOrganizationCustomizationsTier!
+  }
+
+  input UpsertOrganizationCustomizationsTier {
+    enabled: Boolean!
+    label: String!
+  }
+
+  input UpsertOrganizationOvertimeSettings {
+    eventSettings: UpsertOrganizationEventSettings
+    shiftsPerWeek: Int!
+    hoursPerMonth: Int
+    lottery: UpsertLotterySettings!
+    shiftBuffer: UpsertShiftBuffer!
+    userRelinquishShift: UpsertUserRelinquishShift!
+    shiftReminder: UpsertShiftReminder!
+    secondaryShiftReminder: UpsertShiftReminder
+    checkInOut: UpsertCheckInOutSetting
+    interestList: UpsertInterestListSetting
+  }
+
+  input UpsertOrganizationEventSettings {
+    allowThumbnail: Boolean!
+    defaultThumbnail: String
+  }
+
+  input UpsertOrganizationSSOSettings {
+    uiSubDomains: [String]
+    enablePasswordLogin: Boolean
+    metadataDocUrl: String
+  }
+
+  input UpsertOrganizationFeatures {
+    lottery: Boolean
+    venueContractDates: Boolean
+    eventCheckIn: Boolean
+    eventCheckOut: Boolean
+    officerCheckInOut: Boolean
+    interestLists: Boolean
+    monthlyMaxHours: Boolean
+    weeklyMaxShifts: Boolean
+    externalEventRequests: Boolean
+    disabledTiers: Boolean
+    disabledTierUntil: Boolean
+    sso: Boolean
+    equipment: Boolean
+    lasdEventFields: Boolean
+    profileTenor: Boolean
+    lasdUserFields: Boolean
+    autoEnroll: Boolean
+    docusign: Boolean
+    kiosk: Boolean
+    eventTemplates: Boolean
+    noShowReport: Boolean
+    rankHourlyRate: Boolean
+    callSign: Boolean
+    eventInvoice: Boolean
+    vehicleCategories: Boolean
+    rankGrouping: Boolean
+    endOfShiftPDF: Boolean
+    docusignCheckout: Boolean
+    customizableShiftId: Boolean
+    incidentEvents: Boolean
+    outsideUserList: Boolean
+    signingAuthorityAssignment: Boolean
+    financeUnit: Boolean
+    showShiftsByEvent: Boolean
+    mapboxReportingLocation: Boolean
+    operationsUnit: Boolean
+    adminManagedProfilePhotos: Boolean
+  }
+
+  input UpsertInterestListSetting {
+    defaultHoursBeforeShift: Int
+    defaultAutoHireCutoff: Int
+    defaultNotificationTime: Int
+  }
+
+  input UpsertCheckInOutSetting {
+    minutesBeforeShiftStart: Int!
+    minutesAfterShiftEnd: Int!
+  }
+
+  input UpsertUserRelinquishShift {
+    enabled: Boolean!
+    # Number of hours to wait before shift starts to allow users to relinquish their shift
+    numberOfHoursBeforeShift: Int!
+    afterShiftRemove: UpsertAfterShiftRemove!
+    requireNoteWhenRelinquishing: Boolean!
+  }
+
+  input UpsertShiftBuffer {
+    enabled: Boolean!
+    minuteShiftBuffer: Int!
+    adminOverrideShiftBuffer: Boolean!
+  }
+
+  input UpsertShiftReminder {
+    enabled: Boolean!
+    # Number of hours before shift to send reminder
+    time: Int!
+    unit: ShiftReminderUnit!
+  }
+
+  # What tier should members be moved to if they relinquish their shift
+  # and for how long
+  input UpsertAfterShiftRemove {
+    tier: MemberTier!
+    days: Int!
+  }
+
+  input UpsertLotterySettings {
+    enabled: Boolean!
+    # The number of hours to notify users before the lottery window closes
+    notifyUsersBeforeClose: Int!
+    # Number of hours to wait before showing FCFS shifts
+    fcfsShiftsDelay: Int!
+    open: UpsertLotteryDate!
+    close: UpsertLotteryDate!
+  }
+
+  input UpsertLotteryDate {
+    dayOfWeek: DayOfWeek!
+    ## This will be a full ISO string but we will only
+    ## use the hour and minute portion of the ISO
+    time: String!
+  }
+###### END Organization ######
+
+###### START Notifications ######
+  enum NotificationFrequency {
+    ONCE
+    ALWAYS
+    UNTIL_EXPIRE
+  }
+
+  # These are notifications created by system admins
+  type Notification {
+    id: ID!
+    title: String!
+    body: String!
+    active: Boolean!
+    frequency: NotificationFrequency!
+    expiration: String
+    rankIds: [String]
+    docType: DocType!
+    orgId: String!
+    createdById: String
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    modifiedById: String
+
+    # This boolean will determine if the requesting user has seen the notification or not
+    seen: Boolean
+    createdBy: User
+    org: Organization!
+    ranks: [Rank]!
+    memberNotification: MemberNotification
+    modifiedBy: User
+  }
+
+  type EventNotification {
+    id: ID!
+    eventId: ObjectId
+    assignmentId: ObjectId
+    shiftId: ObjectId
+    title: String!
+    description: String!
+    attachmentPaths: [String]
+
+    orgId: ObjectId!
+    createdById: ObjectId
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    removedAt: DateTime
+    modifiedById: ObjectId
+
+    attachments: [String!]
+    org: Organization!
+    createdBy: User
+    modifiedBy: User
+  }
+
+  input CreateEventNotification {
+    # We will set either a eventId, assignmentId, or shiftId based on what the notification is for
+    eventId: ObjectId
+    assignmentId: ObjectId
+    shiftId: ObjectId
+    shiftGroupId: String
+    title: String!
+    description: String!
+    attachmentPaths: [String]
+  }
+
+  # These are notifications that will replace SMS notifications
+  type InAppNotifications {
+    id: ID!
+    title: String!
+    body: String!
+    read: Boolean!
+    # This is here so we what what kind of notification is being sent
+    # that way on the frontend we can determine an action to take based on the type
+    templateName: String!
+    docType: DocType!
+    orgId: String!
+    userId: String!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+    meta: InAppNotificationMeta
+
+    org: Organization!
+    user: User!
+  }
+
+  type InAppNotificationMeta {
+    eventId: String
+    assignmentId: String
+    shiftId: String
+    rankId: String
+    skillId: String
+    venueId: String
+    shiftBufferRequestId: String
+  }
+
+  type MemberNotification {
+    id: ID!
+    notificationId: String!
+    userId: String!
+    docType: DocType!
+    lastSeen: String!
+
+    notification: Notification!
+    user: User!
+  }
+
+  input UpsertNotification {
+    id: String
+    title: String!
+    body: String
+    active: Boolean
+    frequency: NotificationFrequency
+    expiration: String
+    rankIds: [String]
+  }
+###### END Notifications ######
+
+###### START Incident Submission ######
+  type OperationalPeriod {
+    date: DateTime! # required
+  }
+
+  enum TimekeepingType {
+    PAID
+    SAVED
+  }
+
+  type Timekeeping {
+    rdo: String # "yes" or "no"
+    overtimeHours: Float # required when rdo is "yes"
+    straightHours: Float # required when rdo is "no"
+    timeIn: DateTime # required
+    timeOut: DateTime # required
+    overtimeTimeIn: DateTime
+    overtimeTimeOut: DateTime
+    type: TimekeepingType
+  }
+
+  type ShiftDetails {
+    enrouteToIncident: DateTime
+    staging1097: DateTime
+    staging1098: DateTime
+    arrivalAtUOA: DateTime
+    time18Hour: DateTime
+  }
+
+  type VehicleInformation {
+    hasVehicle: String # "yes" or "no"
+    vehicleCategory: ObjectId # required when hasVehicle is "yes"
+    vehicleMake: String # required when hasVehicle is "yes"
+    vehicleModel: String # required when hasVehicle is "yes"
+    vehicleNumber: String # required when hasVehicle is "yes"
+    startingMileage: Float # required when hasVehicle is "yes"
+    endingMileage: Float # required when hasVehicle is "yes"
+
+    vehicleCategoryRecord: VehicleCategories
+  }
+
+  type MissionAssignments {
+    escort: Boolean
+    evacuations: Boolean
+    hardClosure: Boolean
+    incidentManagementTeam: Boolean
+    logistics: Boolean
+    rrf: Boolean
+    rovingSecurity: Boolean
+    searchAndRescue: Boolean
+    softClosure: Boolean
+    welfareCheck: Boolean
+    other: Boolean
+    # At least one of these must be true
+  }
+
+  type AssignmentSummary {
+    callSign: String
+    squad: String
+    supervisor: String
+    missionAssignments: MissionAssignments
+    otherExplanation: String
+  }
+
+  type ActivityLogEntry {
+    time: DateTime
+    missionNumber: String
+    notes: String
+  }
+
+  type ActivityLog {
+    entries: [ActivityLogEntry] # Minimum 1, Maximum 25
+  }
+
+  enum IncidentFormStatus {
+    DRAFT
+    SUBMITTED
+  }
+
+  type IncidentForm {
+    id: ID!
+    operationalPeriod: OperationalPeriod!
+    reviewer: ObjectId
+    timekeeping: Timekeeping!
+    shiftDetails: ShiftDetails!
+    vehicleInformation: VehicleInformation!
+    assignmentSummary: AssignmentSummary!
+    activityLog: ActivityLog!
+    isMutualAid: Boolean!
+
+    step: Int
+    status: IncidentFormStatus
+    submittedDate: DateTime
+
+    envelopeId: String
+    pastEnvelopeIds: [String]
+    eventId: ObjectId!
+    userId: ObjectId!
+    orgId: ObjectId!
+    modifiedById: ObjectId!
+    createdAt: String!
+    updatedAt: String!
+    removedAt: String
+
+    event: Event!
+    user: User!
+    reviewerUser: OutsideUser
+    modifiedBy: User!
+    org: Organization!
+
+    docusignEvent: DocusignEvent
+  }
+
+  type IncidentFormResponse {
+    signingUrl: String
+    incidentForm: IncidentForm!
+  }
+
+  input IOperationalPeriod {
+    date: DateTime! # required
+  }
+
+  input ITimekeeping {
+    rdo: String # "yes" or "no"
+    overtimeHours: Float # required when rdo is "yes"
+    straightHours: Float # required when rdo is "no"
+    timeIn: DateTime # required
+    timeOut: DateTime # required
+    overtimeTimeIn: DateTime
+    overtimeTimeOut: DateTime
+    type: TimekeepingType
+  }
+
+  input IShiftDetails {
+    enrouteToIncident: DateTime
+    staging1097: DateTime
+    staging1098: DateTime
+    arrivalAtUOA: DateTime
+    time18Hour: DateTime
+  }
+
+  input IVehicleInformation {
+    hasVehicle: String # "yes" or "no"
+    vehicleCategory: ObjectId # required when hasVehicle is "yes"
+    vehicleMake: String # required when hasVehicle is "yes"
+    vehicleModel: String # required when hasVehicle is "yes"
+    vehicleNumber: String # required when hasVehicle is "yes"
+    startingMileage: Float # required when hasVehicle is "yes"
+    endingMileage: Float # required when hasVehicle is "yes"
+  }
+
+  input IMissionAssignments {
+    escort: Boolean
+    evacuations: Boolean
+    hardClosure: Boolean
+    incidentManagementTeam: Boolean
+    logistics: Boolean
+    rrf: Boolean
+    rovingSecurity: Boolean
+    searchAndRescue: Boolean
+    softClosure: Boolean
+    welfareCheck: Boolean
+    other: Boolean
+    # At least one of these must be true
+  }
+
+  input IAssignmentSummary {
+    callSign: String
+    squad: String
+    supervisor: String
+    missionAssignments: IMissionAssignments
+    otherExplanation: String
+  }
+
+  input IActivityLogEntry {
+    time: DateTime
+    missionNumber: String
+    notes: String
+  }
+
+  input IActivityLog {
+    entries: [IActivityLogEntry] # Minimum 1, Maximum 25
+  }
+
+  input IIncidentForm {
+    id: ID
+    operationalPeriod: IOperationalPeriod!
+    reviewer: ObjectId
+    timekeeping: ITimekeeping!
+    shiftDetails: IShiftDetails!
+    vehicleInformation: IVehicleInformation!
+    assignmentSummary: IAssignmentSummary!
+    activityLog: IActivityLog!
+    isMutualAid: Boolean
+
+    step: Int
+    eventId: ObjectId!
+  }
+###### END Incident Submission ######
+
+###### START Pagination ######
+  input SearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    orderBy: String
+    order: String
+  }
+
+  input EventUserActionSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    orderBy: String
+    order: String
+    userId: ObjectId
+    shiftGroupId: String
+    incidentFormId: ObjectId
+    eventIds: [ObjectId]
+    cursor: ObjectId
+  }
+
+  type EventUserActionSearchResult {
+    items: [EventUserAction!]
+    total: Int!
+  }
+
+  input FinanceShiftSearchInput {
+    eventId: ObjectId!
+  }
+
+  input IncidentFormSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    orderBy: String
+    order: String
+    status: IncidentFormStatus
+    userId: ObjectId
+    submittedDate: SearchDateFilter
+    eventId: ObjectId
+  }
+
+  type IncidentFormSearchResult {
+    items: [IncidentForm!]
+    total: Int!
+  }
+
+  type OutsideUserSearchResult {
+    items: [OutsideUser!]
+    total: Int!
+  }
+
+  input DocusignEventSearchInput {
+    limit: Int
+    skip: Int
+    userId: String!
+    role: DocusignEventUserRole
+    eventIds: [String!]
+    orderBy: String
+    order: String
+  }
+
+  type DocusignEventSearchResult {
+    items: [DocusignEvent]
+    total: Int!
+  }
+
+  type LotteryCounterSearchResult {
+    items: [LotteryCounter]
+    total: Int!
+  }
+
+  input RankSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    active: Boolean
+    orderBy: String
+    order: String
+  }
+
+  type RankSearchResult {
+    items: [Rank]
+    total: Int!
+  }
+
+  type RankGroupSearchResult {
+    items: [RankGroup]
+    total: Int!
+  }
+
+  input RankGroupSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    orderBy: String
+    order: String
+  }
+
+  input UnitSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    active: Boolean
+    orderBy: String
+    order: String
+  }
+
+  type UnitSearchResult {
+    items: [Unit]
+    total: Int!
+  }
+
+  input DivisionSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    active: Boolean
+    orderBy: String
+    order: String
+  }
+
+  input AssignmentDivisionSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    active: Boolean
+    orderBy: String
+    order: String
+  }
+
+  input BranchSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    active: Boolean
+    orderBy: String
+    order: String
+  }
+
+  input AssignmentGroupSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    active: Boolean
+    orderBy: String
+    order: String
+  }
+
+  input VehicleCategoriesSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    active: Boolean
+    orderBy: String
+    order: String
+  }
+
+  type DivisionSearchResult {
+    items: [Division]
+    total: Int!
+  }
+
+  type AssignmentDivisionSearchResult {
+    items: [AssignmentDivision]
+    total: Int!
+  }
+
+  type BranchSearchResult {
+    items: [Branch]
+    total: Int!
+  }
+
+  type AssignmentGroupSearchResult {
+    items: [AssignmentGroup]
+    total: Int!
+  }
+
+  type VehicleCategoriesSearchResult {
+    items: [VehicleCategories]
+    total: Int!
+  }
+
+  input MemberSkillSearchInput {
+    limit: Int
+    skip: Int
+    status: String
+    orderBy: String
+    order: String
+  }
+
+  type MemberSkillSearchResult {
+    items: [MemberSkill]
+    total: Int!
+  }
+
+  input SkillSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    requiresCert: Boolean
+    rankOnlyIds: [String]
+    requiresAdminApproval: Boolean
+    active: Boolean
+    orderBy: String
+    order: String
+  }
+
+  type SkillSearchResult {
+    items: [Skill]
+    total: Int!
+  }
+
+  input MemberEquipmentSearchInput {
+    limit: Int
+    skip: Int
+    status: String
+    orderBy: String
+    order: String
+  }
+
+  type MemberEquipmentSearchResult {
+    items: [MemberEquipment]
+    total: Int!
+  }
+
+  input EquipmentSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    requiresEquipmentTime: Boolean
+    requiresCert: Boolean
+    rankOnlyIds: [String]
+    requiresAdminApproval: Boolean
+    active: Boolean
+    orderBy: String
+    order: String
+  }
+
+  type EquipmentSearchResult {
+    items: [Equipment]
+    total: Int!
+  }
+
+  input VenueSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    status: [String]
+    orderBy: String
+    order: String
+  }
+
+  type VenueSearchResult {
+    items: [Venue]
+    total: Int!
+  }
+
+  type EventSearchResult {
+    items: [Event]
+    total: Int!
+  }
+
+  input SearchTimeFilter {
+    gte: String
+    lte: String
+    value: String
+  }
+
+  input SearchDateFilter {
+    gte: DateTime
+    lte: DateTime
+    value: DateTime
+  }
+
+  input SearchTimeRange {
+    startTime: SearchTimeFilter
+    endTime: SearchTimeFilter
+    removedAt: SearchTimeFilter
+  }
+
+  input EventSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    range: SearchTimeRange
+    status: [EventStatus]
+    lotteryNumber: Int
+    venueIds: [String]
+    referenceIds: [Int]
+    endTime: SearchTimeFilter
+    createdById: [String]
+    orderBy: String
+    order: String
+    includeRemoved: Boolean
+  }
+
+  input AssignmentSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    eventId: String
+    orderBy: String
+    order: String
+  }
+
+  type AssignmentSearchResult {
+    items: [Assignment]
+    total: Int!
+  }
+
+  input ShiftSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    queryField: String
+    userId: String
+    range: SearchTimeRange
+    refNumber: String
+    rangeField: String
+    daysOfWeek: [DayOfWeek!]
+    rankIds: [String]
+    skillIds: [String]
+    createdById: [String]
+    assignedIds: [String]
+    eventIds: [String]
+    assignmentId: String
+    startTime: String
+    endTime: String
+    orderBy: String
+    order: String
+    status: [ShiftStatus]
+    includeRemoved: Boolean
+  }
+
+  input AvailableShiftsSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    orderBy: String
+    order: String
+    upcoming: Boolean
+  }
+
+  type ShiftSearchResult {
+    items: [Shift]
+    total: Int!
+  }
+
+  input ShiftBufferRequestsSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    orderBy: String
+    order: String
+    status: String
+    userId: String
+    startTime: String
+    endTime: String
+  }
+
+  input ShiftLotteryRequestsSearchInput {
+    limit: Int
+    skip: Int
+    orderBy: String
+    order: String
+    userId: String
+    counters: [Int]
+    includeRemoved: Boolean
+  }
+
+  input ShiftInterestRequestsSearchInput {
+    shiftGroupId: String!
+    limit: Int
+    skip: Int
+    orderBy: String
+    order: String
+    includeRemoved: Boolean
+  }
+
+  input UserShiftInterestRequestsSearchInput {
+    limit: Int
+    skip: Int
+    orderBy: String
+    order: String
+    userId: ObjectId
+  }
+
+  input ShiftLottoRequestsSearchInput {
+    limit: Int
+    skip: Int
+    lotteryCounter: Int!
+    shiftGroupId: String!
+    orderBy: String
+    order: String
+  }
+
+  type ShiftBufferRequestsSearchResult {
+    items: [ShiftBufferRequest]
+    total: Int!
+  }
+
+  type ShiftLotteryRequestsSearchResult {
+    items: [ShiftLotteryRequest]
+    total: Int!
+  }
+
+  type ShiftInterestRequestsSearchResult {
+    items: [ShiftInterestRequest]
+    total: Int!
+  }
+
+  type NotificationSearchResult {
+    items: [Notification]
+    total: Int!
+  }
+
+  input InAppNotificationSearchInput {
+    limit: Int
+    skip: Int
+    read: Boolean
+    orderBy: String
+    order: String
+  }
+
+  type EventNotificationSearchResult {
+    items: [EventNotification!]
+    total: Int!
+  }
+
+  input EventNotificationSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    active: Boolean
+    orderBy: String
+    order: String
+    eventId: ObjectId!
+    assignmentId: ObjectId!
+    shiftId: ObjectId!
+  }
+
+  type InAppNotificationSearchResult {
+    items: [InAppNotifications]
+    total: Int!
+    unreadCount: Int!
+  }
+
+  input NotificationSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    active: Boolean
+    orderBy: String
+    order: String
+  }
+
+  type UserSearchResult {
+    items: [User]
+    total: Int!
+  }
+
+  input UserSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    queryField: String
+    pNumber: String
+    exactPNumber: String
+    phone: String
+    email: String
+    excludeIds: [String]
+    rankIds: [String]
+    statuses: [MemberStatus]
+    skillIds: [String]
+    tiers: [MemberTier]
+    admin: Boolean
+    orderBy: String
+    order: String
+  }
+
+  input AllUsersSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    queryField: String
+    pNumber: String
+    phone: String
+    email: String
+    excludeIds: [String]
+    rankIds: [String]
+    statuses: [MemberStatus]
+    skillIds: [String]
+    tiers: [MemberTier]
+    admin: Boolean
+    orderBy: String
+    order: String
+    orgIds: [String]
+  }
+
+  input OrganizationSearchInput {
+    limit: Int
+    skip: Int
+    query: String
+    queryField: String
+    excludeIds: [String]
+    orderBy: String
+    order: String
+  }
+
+  type OrganizationSearchResult {
+    items: [Organization]
+    total: Int!
+  }
+###### END Pagination ######
+
+type Query {
+  health: String
+  me: User
+
+  organization: Organization
+  organizationById(orgId: String!): Organization
+  organizations(input: OrganizationSearchInput): OrganizationSearchResult
+  organizationFeatures: [OrganizationFeatureOptions]
+  activeLottery: Boolean
+
+  outsideUsers(input: SearchInput): OutsideUserSearchResult
+
+  allUsers(input: AllUsersSearchInput): UserSearchResult
+  users(input: UserSearchInput): UserSearchResult
+  user(id: String!, shiftStart: String, timezoneOffset: Int): User
+  docusignEvents(input: DocusignEventSearchInput!): DocusignEventSearchResult
+  signingAuthorityAssignments(eventId: ObjectId!): AssignmentSearchResult
+  eventUserActions(input: EventUserActionSearchInput!): EventUserActionSearchResult
+
+  rank(id: String!): Rank
+  ranks(input: RankSearchInput): RankSearchResult
+  rankGroups(input: RankGroupSearchInput): RankGroupSearchResult
+
+  unit(id: String!): Unit
+  units(input: UnitSearchInput): UnitSearchResult
+
+  division(id: String!): Division
+  divisions(input: DivisionSearchInput): DivisionSearchResult
+
+  assignmentDivision(id: String!): AssignmentDivision
+  assignmentDivisions(input: AssignmentDivisionSearchInput): AssignmentDivisionSearchResult
+
+  branch(id: String!): Branch
+  branches(input: BranchSearchInput): BranchSearchResult
+
+  assignmentGroup(id: String!): AssignmentGroup
+  assignmentGroups(input: AssignmentGroupSearchInput): AssignmentGroupSearchResult
+
+  vehicleCategory(id: String!): Division
+  vehicleCategories(input: VehicleCategoriesSearchInput): VehicleCategoriesSearchResult
+  
+  skill(id: String!): Skill
+  skills(input: SkillSearchInput): SkillSearchResult
+  memberSkills(input: MemberSkillSearchInput): MemberSkillSearchResult
+
+  equipment(id: String!): Equipment
+  equipments(input: EquipmentSearchInput): EquipmentSearchResult
+  memberEquipments(input: MemberEquipmentSearchInput): MemberEquipmentSearchResult
+  
+  venue(id: String!): Venue
+  venues(input: VenueSearchInput): VenueSearchResult
+
+  event(id: String!): Event
+  events(input: EventSearchInput): EventSearchResult
+  fetchActiveIncidents: EventSearchResult
+  eventNotifications(input: EventNotificationSearchInput): EventNotificationSearchResult
+
+  incidentForms(input: IncidentFormSearchInput, report: Boolean): IncidentFormSearchResult
+  incidentForm(id: ObjectId!): IncidentForm
+
+  assignment(id: String!): Assignment
+  assignments(input: AssignmentSearchInput): AssignmentSearchResult
+
+  availableShifts(input: AvailableShiftsSearchInput): ShiftSearchResult
+  shift(id: String!): Shift
+  shiftTabs(id: String!): ShiftTabResponse
+  groupedShifts(shiftId: String!): [Shift]
+  shifts(input: ShiftSearchInput): ShiftSearchResult
+  lotteryShifts: ShiftSearchResult
+  shiftUsers(id: String!, name: String): UserSearchResult
+  shiftBufferRequests(input: ShiftBufferRequestsSearchInput): ShiftBufferRequestsSearchResult
+  shiftLotteryRequests(input: ShiftLotteryRequestsSearchInput): ShiftLotteryRequestsSearchResult
+  shiftLottoRequests(input: ShiftLottoRequestsSearchInput!): ShiftLotteryRequestsSearchResult
+  shiftInterestRequests(input: ShiftInterestRequestsSearchInput): ShiftInterestRequestsSearchResult
+  userShiftInterestRequests(input: UserShiftInterestRequestsSearchInput): ShiftInterestRequestsSearchResult
+  financeShifts(eventId: ObjectId!): [FinanceShift]
+  activityShifts(userId: ObjectId!, cursor: ObjectId): ShiftSearchResult
+
+  lotteryCounter(counter: Int): LotteryCounter
+  lotteryCounters(input: SearchInput): LotteryCounterSearchResult
+  lottoAnalytics(userId: String): LottoAnalytics
+
+  notification(id: String!): Notification
+  notifications(input: NotificationSearchInput): NotificationSearchResult
+  activeNotifications(input: SearchInput): NotificationSearchResult
+  inAppNotifications(input: InAppNotificationSearchInput): InAppNotificationSearchResult
+
+  siteLock: SiteLock
+}
+
+type Mutation {
+  createOrganization(organization: CreateOrganization! ): Organization
+  organization(organization: UpsertOrganization!): Organization
+  defaultEventThumbnailUploadUrl: OrganizationEventSettingsUpload!
+  removeEventThumbnail(eventId: String!): Boolean
+
+  newUser(user: NewUser!): User
+  user(user: UpdateUser!): User
+  inviteUser(user: InviteUser!): User
+  removeUser(id: String!): ID!
+  profilePhotoUploadUrl: ProfilePhotoAttachmentUpload
+  adminEditPassword(input: InputAdminResetPassword!): Boolean
+  browserNotificationSubscription(input: InputBrowserNotificationSubscription!): BrowserNotificationSetting
+  removeBrowserNotificationSubscription(endpoint: String): Boolean
+  outsideUsers(users: [CreateOutsideUser!]!): [OutsideUser!]!
+  removeOutsideUser(id: String!): ID!
+
+  # Super admin function only
+  impersonateUser(userId: String!): Boolean
+  resetImpersonation: Boolean
+
+  rank(rank: UpsertRank!): Rank
+  removeRank(id: String!): ID!
+  rankGroup(rankGroup: UpsertRankGroup!): RankGroup
+  addRanksToGroup(rankIds: [String!]!, rankGroupId: String!): Boolean
+  removeRanksFromGroup(rankIds: [String!]!, rankGroupId: String!): Boolean
+  removeRankGroup(id: String!): ID!
+
+  unit(unit: UpsertUnit!): Unit
+  removeUnit(id: String!): ID!
+
+  division(division: UpsertDivision!): Division
+  removeDivision(id: String!): ID!
+
+  assignmentDivision(assignmentDivision: UpsertAssignmentDivision!): AssignmentDivision
+  removeAssignmentDivision(id: String!): ID!
+
+  branch(branch: UpsertBranch!): Branch
+  removeBranch(id: String!): ID!
+
+  assignmentGroup(assignmentGroup: UpsertAssignmentGroup!): AssignmentGroup
+  removeAssignmentGroup(id: String!): ID!
+
+  vehicleCategory(vehicleCategory: UpsertVehicleCategories!): VehicleCategories
+  removeVehicleCategory(id: String!): ID!
+
+  skill(skill: UpsertSkill!): Skill
+  removeSkill(id: String!): ID!
+  userSkill(userSkill: UpsertMemberSkill!): MemberSkill
+  removeUserSkill(id: String!): ID!
+  userSkillAttachmentUploadUrl: MemberSkillAttachmentUpload
+
+  equipment(equipment: UpsertEquipment!): Equipment
+  removeEquipment(id: String!): ID!
+  userEquipment(userEquipment: UpsertMemberEquipment!): MemberEquipment
+  removeUserEquipment(id: String!): ID!
+  userEquipmentAttachmentUploadUrl: MemberEquipmentAttachmentUpload
+
+  venue(venue: UpsertVenue!): Venue
+  removeVenue(id: String!): ID!
+
+  event(event: UpsertEvent!): Event
+  generateInvoice(eventId: String!): String
+  generateDSInvoice(eventId: String!): EventInvoiceResponse
+  cloneEvent(id: String!): Event
+  templateEvent(id: String!): Event
+  approveEvent(id: String!): Event
+  rejectEvent(id: String!, reason: String): Event
+  eventAttachmentUploadUrl(name: String, eventId: String): EventAttachmentUpload
+  removeEvent(id: String!): ID!
+  notifyUsersOfEvent(eventId: String!): Boolean
+  
+  # Returns signingUrl
+  incidentForm(input: IIncidentForm!, saveOnly: Boolean, resubmit: Boolean): IncidentFormResponse!
+  voidIncidentForm(id: ObjectId!, voidReason: String): Boolean
+  removeIncidentForm(id: String!): ID!
+
+  assignment(assignment: UpsertAssignment!): Assignment
+  assignmentAttachmentUploadUrl(name: String, assignmentId: String): AssignmentAttachmentUpload
+  removeAssignment(id: String!): ID!
+  demobilize(shiftId: String!): Boolean
+  demobilized(assignmentId: ObjectId!): Boolean @deprecated(reason: "Use demobilize mutation with shiftId instead")
+  eventNotification(input: CreateEventNotification!): EventNotification
+  eventNotificationAttachmentUploadUrl: EventAttachmentUpload
+
+  shifts(shifts: [UpsertShift]!, removeSlots: Boolean): [Shift]
+  partialShiftUpdate(shiftId: String!, updates: ShiftUpdates!): String
+  removeShift(id: String!): ID!
+  removeShifts(shiftId: String!): [String]!
+  shiftAssign(id: String!, userId: String, note: String): Shift
+  shiftBufferRequest(shiftBufferRequest: CreateShiftBufferRequest): ShiftBufferRequest
+  setShiftBufferStatus(id: String!, status: ShiftBufferRequestStatus!, reason: String): ShiftBufferRequest
+  shiftLotteryRequest(shiftLotteryRequest: UpsertShiftLotteryRequest): ShiftLotteryRequest
+  shiftInterestRequest(shiftInterestRequest: UpsertShiftInterestRequest): ShiftInterestRequest
+  removeShiftLotteryRequest(id: String): ID!
+  removeShiftInterestRequest(id: String): ID!
+  notifyUsersOfShift(shiftId: String!): Boolean
+  removeShiftBufferRequest(id: String!): ID!
+  checkIn(input: ShiftCheckInOutEvent!): Shift!
+  checkOut(input: ShiftCheckInOutEvent!): ShiftCheckOutResponse!
+  editCheckInOut(input: ShiftAdminCheckInOutEvent!): Shift!
+  shiftComment(input: UpsertShiftComment!): Boolean
+
+  notification(notification: UpsertNotification!): Notification
+  removeNotification(id: String!): ID!
+  seenNotifications(notificationIds: [String]!): Boolean
+  readInAppNotifications(ids: [String], readAll: Boolean): Boolean
+  removeInAppNotifications(ids: [String], removeAll: Boolean): Boolean
+
+  # Lottery review site
+  siteLock(input: UpsertSiteLock): SiteLock
+  approveLottoAssignment(id: String!, shiftId: String!, userId: String!): Boolean
+  rejectLottoAssignment(id: String!, shiftId: String!, userId: String!): Boolean
+}

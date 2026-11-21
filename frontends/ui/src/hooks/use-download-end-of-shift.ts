@@ -1,0 +1,102 @@
+import { useLazyQuery } from "@apollo/client";
+import sortBy from "lodash/sortBy";
+import { PDFDocument } from 'pdf-lib';
+import { useSnackbar } from "notistack";
+import { Assignment, Shift, ShiftStatus } from "src/__generated__/resolvers-types";
+import { GET_ALL_EVENT_SHIFTS } from "src/api/event";
+import { GET_SHIFT_TABS } from "src/api/shifts";
+import { generateFilledPDF } from "src/utils/generate-files/end-of-shift";
+import dayjs from "dayjs";
+
+export const useEndOfShiftDownload = () => {
+  const { enqueueSnackbar } = useSnackbar();
+
+  const [getAllShifts] = useLazyQuery(GET_ALL_EVENT_SHIFTS, {
+    fetchPolicy: 'network-only', // Used for first execution
+    nextFetchPolicy: 'cache-first', // Used for subsequent executions
+  });
+
+  const [getTabs] = useLazyQuery(GET_SHIFT_TABS, {
+    fetchPolicy: 'network-only', // Used for first execution
+    nextFetchPolicy: 'cache-first', // Used for subsequent executions
+  });
+
+  const downloadEndOfShiftPDF = async (shift: Shift, openTab: boolean = true) => {
+    try {
+      const { data: { shiftTabs } } = await getTabs({
+        variables: { id: shift.id },
+      });
+      const tabData: Record<string, any> = JSON.parse(shiftTabs.data);
+      const now = dayjs(shift.endTime).format('MM/DD/YYYY');
+      tabData.DateSigned1 = now;
+      tabData.DateSigned2 = now;
+      if (!shift.shiftCheckInOut?.checkInTime || !shift.shiftCheckInOut?.checkOutTime) {
+        tabData.checkinTime = '';
+        tabData.checkoutTime = '';
+        tabData.shiftHours = '';
+      }
+
+      const res = await generateFilledPDF({
+        data: tabData,
+        openTab,
+        pdfPath: `${shiftTabs.orgId}/${shiftTabs.templateName || 'shift-close'}`,
+      });
+      return res;
+    } catch(error) {
+      enqueueSnackbar("Error end of shift details", { variant: "error", autoHideDuration: 5000 });
+    }
+    return undefined;
+  };
+
+  const downloadAllEventShiftsPDF = async (eventId: string, eventName: string) => {
+    try {
+      enqueueSnackbar("Generating end of shift reports...", { variant: "info", autoHideDuration: 5000 });
+      const res = await getAllShifts({
+        variables: { id: eventId },
+      });
+      const rawShifts = res.data.event?.assignments?.flatMap?.((assignment: Assignment) =>
+        assignment.shifts?.map((shift) => ({ ...shift, assignment: { name: assignment.name } }))
+      ) || [];
+      const shifts = sortBy(
+        rawShifts.filter((shift: Shift) => shift.user && shift.status !== ShiftStatus.Removed),
+        ['user.lastName', 'startTime']
+      );
+      if (shifts.length === 0) {
+        enqueueSnackbar("No shifts available for end of shift form.", { variant: "warning", autoHideDuration: 5000 });
+        return;
+      }
+
+      const mergedPdf = await PDFDocument.create();
+      const pages: {pdf: PDFDocument, name: string}[] = [];
+      await Promise.allSettled(shifts.map(async (shift: Shift, index: number) => {
+        const pdf = await downloadEndOfShiftPDF(shift, false);
+        if (pdf) {
+          pages.push({ pdf, name: `${shift.user?.lastName}, ${shift.user?.firstName}` });
+        }
+      }));
+      pages.sort((a, b) => a.name.localeCompare(b.name));
+      await Promise.all(pages.map(async ({ pdf }) => {
+        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+        copiedPages.forEach((page) => mergedPdf.addPage(page));
+      }));
+      const mergedPdfFile = await mergedPdf.save();
+
+      const blob = new Blob([mergedPdfFile as any], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${eventName}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+    } catch (error) {
+      enqueueSnackbar("Error generating end of shift reports", { variant: "error", autoHideDuration: 5000 });
+    }
+  };
+
+  return {
+    downloadEndOfShiftPDF,
+    downloadAllEventShiftsPDF,
+  }
+};
